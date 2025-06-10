@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+qgis
+pyjwt
+httpx<1.0
+python-multipart

@@ -1,0 +1,139 @@
+def docker_registry         = 'docker.bergauer.dev'
+def build_docker_image      = "${docker_registry}:5000/bergauer/baseimages/debian12-nodejs22:latest"
+def build_docker_image_args = '''
+                                -v $HOME/.npmrc:$HOME/.npmrc:ro
+                                -v $HOME/.npm-dxf2pdf:$HOME/.npm:rw
+                                -v /etc/passwd:/etc/passwd:ro
+                                -v $HOME/.ssh:$HOME/.ssh:ro
+                                -v /etc/ssh/ssh_known_hosts:/etc/ssh/ssh_known_hosts:ro
+                              '''
+
+def produced_docker_image_base   = 'bergauer/internal/dxf2pdf'
+
+pipeline {
+    options {
+        disableConcurrentBuilds()
+        timestamps()
+        quietPeriod(30)
+        gitLabConnection('gitlab.bergauer.dev')
+        gitlabBuilds(builds: ['jenkins-build'])
+    }
+
+    agent { label 'ubuntu22' }
+
+    stages {
+        stage('Prepare') {
+            steps {
+                sh 'mkdir -p ~/.npm-dxf2pdf'
+            }
+        }
+
+        // ───────────── Verify Server Dependencies ─────────────
+        stage('Install & Test Server Deps') {
+            agent {
+                docker {
+                    image "${build_docker_image}"
+                    args  "${build_docker_image_args}"
+                    reuseNode true
+                }
+            }
+            steps {
+                dir('server') {
+                    echo "🔧 Installing server dependencies for production…"
+                    sh 'npm install --only=production'
+                }
+            }
+        }
+        // ───────────────────────────────────────────────────────
+
+        stage('Build frontend') {
+            agent {
+                docker {
+                    image     "${build_docker_image}"
+                    args      "${build_docker_image_args}"
+                    reuseNode true
+                }
+            }
+            steps {
+                sh '''#!/bin/bash
+                    set -e
+                    set -x
+
+                    cd client
+
+                    npm ci
+                    npm run build
+                '''
+            }
+        }
+
+        stage('Build backend') {
+            agent {
+                docker {
+                    image     "${build_docker_image}"
+                    args      "${build_docker_image_args}"
+                    reuseNode true
+                }
+            }
+            steps {
+                dir('server') {
+                    sh '''#!/bin/bash
+                        set -e
+                        set -x
+
+                        npm ci --only=production
+                    '''
+                }
+            }
+        }
+
+        stage('Docker frontend') {
+            steps {
+                sh """
+                    docker buildx build \
+                        -t ${docker_registry}:5001/${produced_docker_image_base}-frontend:latest \
+                        -f Docker/Dockerfile-frontend \
+                        --push \
+                        .
+                """
+            }
+        }
+
+        stage('Docker backend') {
+            steps {
+                sh """
+                    docker buildx build \
+                    -f Docker/Dockerfile-backend \
+                    -t ${docker_registry}:5001/${produced_docker_image_base}-backend:latest \
+                    --push \
+                    .
+                """
+            }
+        }
+
+
+        stage('Deploy to maptiler-201') {
+            steps {
+                sh """
+                    ssh jenkins@maptiler-201 '
+                        cd /opt/bergauer/dxf2pdf
+                        docker-compose pull backend
+                        docker-compose pull frontend
+                        docker-compose down
+                        docker-compose up -d
+                    '
+                """
+            }
+        }
+    }
+
+    post {
+        cleanup {
+            sh '''
+                cd Docker
+                docker compose down
+            '''
+            cleanWs()
+        }
+    }
+}
