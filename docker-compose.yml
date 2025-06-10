@@ -36,7 +36,7 @@ services:
     environment:
       - MT_KEY=replace-with-your-license
   n8n:
-    image: docker.n8n.io/n8n
+    image: n8nio/n8n
     ports:
       - "5678:5678"
     environment:
