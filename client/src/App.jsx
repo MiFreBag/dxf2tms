@@ -5,9 +5,39 @@ const API = '/api'
 
 // Mock data for demo
 const mockFiles = [
-  { id: 1, name: 'building_plans.dxf', converted: true, uploadDate: '2025-06-09', size: '2.4 MB' },
-  { id: 2, name: 'road_layout.dxf', converted: false, uploadDate: '2025-06-10', size: '1.8 MB' },
-  { id: 3, name: 'utilities.dxf', converted: true, uploadDate: '2025-06-08', size: '3.2 MB' }
+  { 
+    id: 1, 
+    name: 'building_plans.dxf', 
+    converted: true, 
+    uploadDate: '2025-06-09', 
+    size: '2.4 MB',
+    geoPdfSize: '4.8 MB',
+    downloadCount: 3,
+    previewUrl: '/api/preview/1',
+    downloadUrl: '/api/download/1'
+  },
+  { 
+    id: 2, 
+    name: 'road_layout.dxf', 
+    converted: false, 
+    uploadDate: '2025-06-10', 
+    size: '1.8 MB',
+    geoPdfSize: null,
+    downloadCount: 0,
+    previewUrl: null,
+    downloadUrl: null
+  },
+  { 
+    id: 3, 
+    name: 'utilities.dxf', 
+    converted: true, 
+    uploadDate: '2025-06-08', 
+    size: '3.2 MB',
+    geoPdfSize: '5.1 MB',
+    downloadCount: 1,
+    previewUrl: '/api/preview/3',
+    downloadUrl: '/api/download/3'
+  }
 ]
 
 const mockLayers = [
@@ -402,8 +432,189 @@ function MapComponent() {
   )
 }
 
+// PDF Preview Modal Component
+function PDFPreviewModal({ file, isOpen, onClose, onDownload }) {
+  if (!isOpen || !file) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center gap-3">
+            <FileText className="w-6 h-6 text-blue-600" />
+            <div>
+              <h3 className="text-lg font-semibold">{file.name.replace('.dxf', '.pdf')}</h3>
+              <p className="text-sm text-gray-600">GeoPDF Vorschau • {file.geoPdfSize}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onDownload(file)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Herunterladen
+            </button>
+            <button
+              onClick={onClose}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4" />
+              Schließen
+            </button>
+          </div>
+        </div>
+        
+        <div className="p-4">
+          {/* PDF Preview Simulation */}
+          <div className="bg-gray-100 rounded-lg h-96 flex items-center justify-center border-2 border-dashed border-gray-300">
+            <div className="text-center">
+              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-lg font-medium text-gray-600">GeoPDF Vorschau</p>
+              <p className="text-sm text-gray-500 mt-2">
+                {file.name.replace('.dxf', '.pdf')} • Größe: {file.geoPdfSize}
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-4 text-xs text-gray-600">
+                <div className="text-left">
+                  <p><strong>Originalformat:</strong> DXF</p>
+                  <p><strong>Konvertiert:</strong> {file.uploadDate}</p>
+                  <p><strong>Projektionsystem:</strong> LV95 (EPSG:2056)</p>
+                </div>
+                <div className="text-left">
+                  <p><strong>Maßstab:</strong> 1:1000</p>
+                  <p><strong>Downloads:</strong> {file.downloadCount}x</p>
+                  <p><strong>Status:</strong> Verfügbar</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Download Progress Component
+function DownloadProgress({ fileName, progress, onCancel }) {
+  return (
+    <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg border p-4 max-w-sm w-full z-50">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Download className="w-4 h-4 text-blue-600" />
+          <span className="text-sm font-medium">Download läuft...</span>
+        </div>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="text-xs text-gray-600 mb-2">{fileName}</div>
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div 
+          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+      <div className="text-xs text-gray-500 mt-1">{progress}% abgeschlossen</div>
+    </div>
+  )
+}
+
 // Enhanced file upload with drag & drop
 function FileUploadArea({ onUpload }) {
+  const [dragOver, setDragOver] = useState(false)
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setDragOver(false)
+    const files = Array.from(e.dataTransfer.files)
+    const dxfFile = files.find(f => f.name.toLowerCase().endsWith('.dxf'))
+    if (dxfFile) {
+      onUpload({ target: { files: [dxfFile] } })
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setDragOver(true)
+  }
+
+  const handleDragLeave = () => {
+    setDragOver(false)
+  }
+
+  return (
+    <div 
+      className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+        dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+      }`}
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+    >
+      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+      <p className="text-lg font-medium text-gray-700 mb-2">DXF-Dateien hier ablegen</p>
+      <p className="text-sm text-gray-500 mb-4">oder klicken Sie, um Dateien auszuwählen</p>
+      <input 
+        type="file" 
+        accept=".dxf" 
+        onChange={onUpload} 
+        className="hidden" 
+        id="file-upload"
+      />
+      <label 
+        htmlFor="file-upload" 
+        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors"
+      >
+        <Plus className="w-4 h-4" />
+        Datei auswählen
+      </label>
+    </div>
+  )
+}
+function BulkDownloadPanel({ files, onSelectAll, onDownloadSelected, selectedFiles }) {
+  const convertedFiles = files.filter(f => f.converted)
+  const selectedCount = selectedFiles.length
+  const totalSize = selectedFiles.reduce((sum, id) => {
+    const file = files.find(f => f.id === id)
+    return sum + (file ? parseFloat(file.geoPdfSize) : 0)
+  }, 0).toFixed(1)
+
+  if (convertedFiles.length === 0) return null
+
+  return (
+    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-blue-600" />
+          <div>
+            <h4 className="font-medium text-blue-900">Bulk Download</h4>
+            <p className="text-sm text-blue-700">
+              {selectedCount} von {convertedFiles.length} GeoPDFs ausgewählt
+              {selectedCount > 0 && ` • ${totalSize} MB gesamt`}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={onSelectAll}
+            className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+          >
+            Alle auswählen
+          </button>
+          {selectedCount > 0 && (
+            <button
+              onClick={onDownloadSelected}
+              className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors flex items-center gap-1"
+            >
+              <Download className="w-3 h-3" />
+              {selectedCount} herunterladen
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
   const [dragOver, setDragOver] = useState(false)
 
   const handleDrop = (e) => {
@@ -461,6 +672,11 @@ function App() {
   const [token, setToken] = useState('demo-token') // For demo purposes
   const [toast, setToast] = useState(null)
   const [convertingFiles, setConvertingFiles] = useState(new Set())
+  
+  // New states for GeoPDF downloads
+  const [previewModal, setPreviewModal] = useState({ isOpen: false, file: null })
+  const [downloadProgress, setDownloadProgress] = useState(null)
+  const [selectedFiles, setSelectedFiles] = useState([])
 
   const showToast = (message, type = 'info') => {
     setToast({ message, type })
@@ -489,7 +705,11 @@ function App() {
       name: file.name,
       converted: false,
       uploadDate: new Date().toISOString().split('T')[0],
-      size: (file.size / 1024 / 1024).toFixed(1) + ' MB'
+      size: (file.size / 1024 / 1024).toFixed(1) + ' MB',
+      geoPdfSize: null,
+      downloadCount: 0,
+      previewUrl: null,
+      downloadUrl: null
     }
     
     setFiles(prev => [...prev, newFile])
@@ -504,15 +724,87 @@ function App() {
     // Simulate conversion delay
     setTimeout(() => {
       setFiles(prev => prev.map(f => 
-        f.id === id ? { ...f, converted: true } : f
+        f.id === id ? { 
+          ...f, 
+          converted: true,
+          geoPdfSize: (parseFloat(f.size) * 2.1).toFixed(1) + ' MB',
+          previewUrl: `/api/preview/${id}`,
+          downloadUrl: `/api/download/${id}`
+        } : f
       ))
       setConvertingFiles(prev => {
         const newSet = new Set(prev)
         newSet.delete(id)
         return newSet
       })
-      showToast('Konvertierung abgeschlossen!', 'success')
+      showToast('Konvertierung abgeschlossen! GeoPDF ist verfügbar.', 'success')
     }, 3000)
+  }
+
+  const handlePreview = (file) => {
+    setPreviewModal({ isOpen: true, file })
+  }
+
+  const handleDownload = async (file) => {
+    setPreviewModal({ isOpen: false, file: null })
+    setDownloadProgress({ fileName: file.name.replace('.dxf', '.pdf'), progress: 0 })
+    
+    // Simulate download progress
+    const progressInterval = setInterval(() => {
+      setDownloadProgress(prev => {
+        if (!prev) return null
+        const newProgress = prev.progress + 10
+        if (newProgress >= 100) {
+          clearInterval(progressInterval)
+          setTimeout(() => {
+            setDownloadProgress(null)
+            // Update download count
+            setFiles(prevFiles => prevFiles.map(f => 
+              f.id === file.id ? { ...f, downloadCount: f.downloadCount + 1 } : f
+            ))
+            showToast('GeoPDF erfolgreich heruntergeladen!', 'success')
+            
+            // Simulate actual download
+            const link = document.createElement('a')
+            link.href = `data:application/pdf;base64,JVBERi0xLjQKJcfsj6IKCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoKMiAwIG9iago8PAovVHlwZSAvUGFnZXMKL0tpZHMgWzMgMCBSXQovQ291bnQgMQo+PgplbmRvYmoKCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQovQ29udGVudHMgNCAwIFIKPj4KZW5kb2JqCgo0IDAgb2JqCjw8Ci9MZW5ndGggNDQKPj4Kc3RyZWFtCkJUCi9GMSAxMiBUZgoxMDAgNzAwIFRkCihHZW9QREYgU2FtcGxlKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCgo1IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9TdWJ0eXBlIC9UeXBlMQovQmFzZUZvbnQgL0hlbHZldGljYQo+PgplbmRvYmoKCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAwOSAwMDAwMCBuIAowMDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxMTUgMDAwMDAgbiAKMDAwMDAwMDIwNCAwMDAwMCBuIAowMDAwMDAwMjk5IDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgNgovUm9vdCAxIDAgUgo+PgpzdGFydHhyZWYKMzY5CiUlRU9G`
+            link.download = file.name.replace('.dxf', '.pdf')
+            link.click()
+          }, 500)
+          return null
+        }
+        return { ...prev, progress: newProgress }
+      })
+    }, 200)
+  }
+
+  const handleBulkDownload = () => {
+    if (selectedFiles.length === 0) return
+    
+    showToast(`${selectedFiles.length} GeoPDFs werden als ZIP heruntergeladen...`, 'info')
+    
+    // Simulate ZIP download
+    setTimeout(() => {
+      const link = document.createElement('a')
+      link.href = `data:application/zip;base64,UEsDBBQAAAAIAAgAAABgS...` // Dummy ZIP data
+      link.download = `GeoPDFs_${new Date().toISOString().split('T')[0]}.zip`
+      link.click()
+      
+      setSelectedFiles([])
+      showToast('ZIP-Archiv erfolgreich heruntergeladen!', 'success')
+    }, 1000)
+  }
+
+  const handleSelectFile = (fileId) => {
+    setSelectedFiles(prev => 
+      prev.includes(fileId) 
+        ? prev.filter(id => id !== fileId)
+        : [...prev, fileId]
+    )
+  }
+
+  const handleSelectAll = () => {
+    const convertedFileIds = files.filter(f => f.converted).map(f => f.id)
+    setSelectedFiles(convertedFileIds)
   }
 
   const getStatusIcon = (file) => {
@@ -540,6 +832,23 @@ function App() {
           message={toast.message} 
           type={toast.type} 
           onClose={() => setToast(null)} 
+        />
+      )}
+
+      {/* PDF Preview Modal */}
+      <PDFPreviewModal 
+        file={previewModal.file}
+        isOpen={previewModal.isOpen}
+        onClose={() => setPreviewModal({ isOpen: false, file: null })}
+        onDownload={handleDownload}
+      />
+
+      {/* Download Progress */}
+      {downloadProgress && (
+        <DownloadProgress 
+          fileName={downloadProgress.fileName}
+          progress={downloadProgress.progress}
+          onCancel={() => setDownloadProgress(null)}
         />
       )}
       
@@ -600,6 +909,59 @@ function App() {
                 <p className="text-gray-600">DXF-Dateien hochladen und zu GeoPDF konvertieren</p>
               </div>
 
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white p-4 rounded-lg shadow-sm border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Gesamt Dateien</p>
+                      <p className="text-2xl font-bold text-gray-900">{files.length}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white p-4 rounded-lg shadow-sm border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Konvertiert</p>
+                      <p className="text-2xl font-bold text-gray-900">{files.filter(f => f.converted).length}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg shadow-sm border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Warteschlange</p>
+                      <p className="text-2xl font-bold text-gray-900">{convertingFiles.size}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg shadow-sm border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
+                      <Download className="w-5 h-5 text-cyan-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Downloads</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {files.reduce((sum, f) => sum + f.downloadCount, 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="mb-8">
                 <FileUploadArea onUpload={handleUpload} />
               </div>
@@ -615,71 +977,127 @@ function App() {
                     <p>Noch keine Dateien hochgeladen</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 border-b">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datei</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Größe</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hochgeladen</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {files.map(file => (
-                          <tr key={file.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                {getStatusIcon(file)}
-                                <span className="text-sm text-gray-600">{getStatusText(file)}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-blue-500" />
-                                <span className="font-medium text-gray-900">{file.name}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {file.size}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {file.uploadDate}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex gap-2">
-                                {!file.converted && !convertingFiles.has(file.id) && (
-                                  <button 
-                                    onClick={() => handleConvert(file.id)}
-                                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
-                                  >
-                                    <Upload className="w-3 h-3" />
-                                    Konvertieren
-                                  </button>
-                                )}
-                                {convertingFiles.has(file.id) && (
-                                  <div className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-md">
-                                    <div className="w-3 h-3 border border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
-                                    Läuft...
-                                  </div>
-                                )}
-                                {file.converted && (
-                                  <a 
-                                    href="#" 
-                                    className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
-                                  >
-                                    <Download className="w-3 h-3" />
-                                    Download
-                                  </a>
-                                )}
-                              </div>
-                            </td>
+                  <>
+                    <BulkDownloadPanel 
+                      files={files}
+                      selectedFiles={selectedFiles}
+                      onSelectAll={handleSelectAll}
+                      onDownloadSelected={handleBulkDownload}
+                    />
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <input
+                                type="checkbox"
+                                onChange={handleSelectAll}
+                                checked={selectedFiles.length === files.filter(f => f.converted).length && files.filter(f => f.converted).length > 0}
+                                className="rounded"
+                              />
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datei</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Größe</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GeoPDF</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Downloads</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {files.map(file => (
+                            <tr key={file.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {file.converted && (
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedFiles.includes(file.id)}
+                                    onChange={() => handleSelectFile(file.id)}
+                                    className="rounded"
+                                  />
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  {getStatusIcon(file)}
+                                  <span className="text-sm text-gray-600">{getStatusText(file)}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="w-4 h-4 text-blue-500" />
+                                  <div>
+                                    <div className="font-medium text-gray-900">{file.name}</div>
+                                    <div className="text-xs text-gray-500">{file.uploadDate}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {file.size}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {file.converted ? (
+                                  <div className="flex items-center gap-1">
+                                    <CheckCircle className="w-3 h-3 text-green-500" />
+                                    <span>{file.geoPdfSize}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {file.converted ? (
+                                  <div className="flex items-center gap-1">
+                                    <Download className="w-3 h-3 text-blue-500" />
+                                    <span>{file.downloadCount}x</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex gap-2">
+                                  {!file.converted && !convertingFiles.has(file.id) && (
+                                    <button 
+                                      onClick={() => handleConvert(file.id)}
+                                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+                                    >
+                                      <Upload className="w-3 h-3" />
+                                      Konvertieren
+                                    </button>
+                                  )}
+                                  {convertingFiles.has(file.id) && (
+                                    <div className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-md">
+                                      <div className="w-3 h-3 border border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
+                                      Läuft...
+                                    </div>
+                                  )}
+                                  {file.converted && (
+                                    <div className="flex gap-1">
+                                      <button 
+                                        onClick={() => handlePreview(file)}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+                                      >
+                                        <FileText className="w-3 h-3" />
+                                        Vorschau
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDownload(file)}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
+                                      >
+                                        <Download className="w-3 h-3" />
+                                        Download
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
             </div>

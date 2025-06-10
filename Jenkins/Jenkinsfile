@@ -40,7 +40,7 @@ pipeline {
             steps {
                 dir('server') {
                     echo "🔧 Installing server dependencies for production…"
-                    sh 'npm install --only=production'
+                    sh 'pip install -r requirements.txt'
                 }
             }
         }
@@ -111,29 +111,7 @@ pipeline {
             }
         }
 
-
-        stage('Deploy to maptiler-201') {
-            steps {
-                sh """
-                    ssh jenkins@maptiler-201 '
-                        cd /opt/bergauer/dxf2pdf
-                        docker-compose pull backend
-                        docker-compose pull frontend
-                        docker-compose down
-                        docker-compose up -d
-                    '
-                """
-            }
-        }
     }
 
-    post {
-        cleanup {
-            sh '''
-                cd Docker
-                docker compose down
-            '''
-            cleanWs()
-        }
-    }
+
 }
