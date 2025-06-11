@@ -1,13 +1,28 @@
 version: '3'
 services:
-  server:
-    build: ./server
-    restart: always
-    expose:
-      - "8000"
+
+  dxf-converter:
+    build: .
+    ports:
+      - "8000:8000"
     volumes:
-      - ./server/uploads:/app/uploads
-      - ./server/output:/app/output
+      - .server/uploads:/app/uploads
+      - .server/output:/app/output
+      - .server/templates:/app/templates
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - QGIS_PREFIX_PATH=/usr
+      - QT_QPA_PLATFORM=offscreen
+      - XDG_RUNTIME_DIR=/tmp/runtime-root
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s    
 
   client:
     build: ./client
@@ -48,3 +63,5 @@ services:
 
 volumes:
   n8n_data:
+  uploads:
+  output:

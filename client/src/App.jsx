@@ -3,48 +3,6 @@ import { Upload, FileText, Download, MapPin, LogOut, CheckCircle, Clock, AlertCi
 
 const API = '/api'
 
-// Mock data for demo
-const mockFiles = [
-  { 
-    id: 1, 
-    name: 'building_plans.dxf', 
-    converted: true, 
-    uploadDate: '2025-06-09', 
-    size: '2.4 MB',
-    geoPdfSize: '4.8 MB',
-    downloadCount: 3,
-    previewUrl: '/api/preview/1',
-    downloadUrl: '/api/download/1'
-  },
-  { 
-    id: 2, 
-    name: 'road_layout.dxf', 
-    converted: false, 
-    uploadDate: '2025-06-10', 
-    size: '1.8 MB',
-    geoPdfSize: null,
-    downloadCount: 0,
-    previewUrl: null,
-    downloadUrl: null
-  },
-  { 
-    id: 3, 
-    name: 'utilities.dxf', 
-    converted: true, 
-    uploadDate: '2025-06-08', 
-    size: '3.2 MB',
-    geoPdfSize: '5.1 MB',
-    downloadCount: 1,
-    previewUrl: '/api/preview/3',
-    downloadUrl: '/api/download/3'
-  }
-]
-
-const mockLayers = [
-  { id: 'layer1', name: 'Building Plans', url: '/api/tms/building' },
-  { id: 'layer2', name: 'Road Layout', url: '/api/tms/roads' }
-]
-
 // Toast notification component
 function Toast({ message, type, onClose }) {
   useEffect(() => {
@@ -66,20 +24,37 @@ function Toast({ message, type, onClose }) {
   )
 }
 
-// Enhanced Login component
+// Enhanced Login component with real API
 function Login({ onLogin }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const submit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    // Simulate login delay
-    setTimeout(() => {
-      onLogin(username, password)
+    setError('')
+    
+    try {
+      const response = await fetch(`${API}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        localStorage.setItem('token', data.access_token)
+        onLogin(data.access_token)
+      } else {
+        setError('Login fehlgeschlagen - Bitte prüfen Sie Ihre Eingaben')
+      }
+    } catch (err) {
+      setError('Verbindungsfehler - Bitte versuchen Sie es später erneut')
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -96,6 +71,11 @@ function Login({ onLogin }) {
           
           <div onSubmit={submit}>
             <div className="space-y-6">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Benutzer</label>
                 <input
@@ -132,6 +112,9 @@ function Login({ onLogin }) {
                   'Anmelden'
                 )}
               </button>
+              <div className="text-sm text-gray-500 text-center">
+                Demo: admin / admin123
+              </div>
             </div>
           </div>
         </div>
@@ -140,30 +123,34 @@ function Login({ onLogin }) {
   )
 }
 
-// Enhanced Map component with real Leaflet integration
-function MapComponent() {
+// Enhanced Map component with real Leaflet and TMS integration
+function MapComponent({ token }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
-  const [layers] = useState([
-    { id: 'building', name: 'Building Plans', url: '/api/tms/building' },
-    { id: 'roads', name: 'Road Layout', url: '/api/tms/roads' },
-    { id: 'utilities', name: 'Utilities', url: '/api/tms/utilities' }
-  ])
+  const [layers, setLayers] = useState([])
   const [selected, setSelected] = useState('')
   const [basemap, setBasemap] = useState('topo')
   const [coordinates, setCoordinates] = useState('47.3769, 8.5417')
   const [showPOIs, setShowPOIs] = useState(false)
   const [currentLayer, setCurrentLayer] = useState(null)
   const [poiMarkers, setPOIMarkers] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  // Mock POI data
-  const pois = [
-    { name: 'Hauptbahnhof', lat: 47.3784, lng: 8.5403, type: 'transport', color: '#3B82F6' },
-    { name: 'ETH Zürich', lat: 47.3765, lng: 8.5487, type: 'education', color: '#10B981' },
-    { name: 'Universität Zürich', lat: 47.3739, lng: 8.5506, type: 'education', color: '#10B981' },
-    { name: 'Zürichsee', lat: 47.3667, lng: 8.5500, type: 'nature', color: '#06B6D4' },
-    { name: 'Bahnhofstrasse', lat: 47.3769, lng: 8.5399, type: 'shopping', color: '#F59E0B' }
-  ]
+  // Fetch TMS layers from backend
+  useEffect(() => {
+    const fetchLayers = async () => {
+      try {
+        const response = await fetch(`${API}/tms`)
+        if (response.ok) {
+          const data = await response.json()
+          setLayers(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch TMS layers:', error)
+      }
+    }
+    fetchLayers()
+  }, [])
 
   // Initialize Leaflet map
   useEffect(() => {
@@ -182,7 +169,7 @@ function MapComponent() {
       // Initialize map once Leaflet is loaded
       const map = window.L.map(mapRef.current).setView([47.3769, 8.5417], 13)
 
-      // Add base tile layer
+      // Add base tile layer (Swiss geo.admin.ch)
       window.L.tileLayer('https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-grau/default/current/3857/{z}/{x}/{y}.jpeg', {
         attribution: '&copy; <a href="https://www.geo.admin.ch/">geo.admin.ch</a>',
         maxZoom: 18
@@ -201,6 +188,7 @@ function MapComponent() {
       }).addTo(map)
 
       mapInstanceRef.current = map
+      setLoading(false)
     }
     document.head.appendChild(script)
 
@@ -212,7 +200,7 @@ function MapComponent() {
     }
   }, [])
 
-  // Handle layer selection
+  // Handle layer selection with real TMS data
   const selectLayer = (layerId) => {
     if (!mapInstanceRef.current || !window.L) return
 
@@ -227,27 +215,41 @@ function MapComponent() {
       return
     }
 
-    // Add new layer (simulate with rectangle for demo)
-    const layerBounds = [[47.365, 8.52], [47.385, 8.56]]
-    const newLayer = window.L.rectangle(layerBounds, {
-      color: '#3B82F6',
-      weight: 2,
-      fillOpacity: 0.2,
-      fillColor: '#3B82F6'
+    const layer = layers.find(l => l.id === layerId)
+    if (!layer) return
+
+    // Add TMS layer from backend
+    const tmsLayer = window.L.tileLayer(`${layer.url}/{z}/{x}/{y}.png`, {
+      tms: true,
+      opacity: 0.7,
+      attribution: 'Stadt Zürich DAV'
     }).addTo(mapInstanceRef.current)
 
-    const layerName = layers.find(l => l.id === layerId)?.name || layerId
-    newLayer.bindPopup(`<strong>DXF Layer</strong><br>${layerName}`)
+    // If layer has config with bounds, fit map to bounds
+    if (layer.config && layer.config.bounds) {
+      const bounds = layer.config.bounds
+      const leafletBounds = [[bounds[1], bounds[0]], [bounds[3], bounds[2]]]
+      mapInstanceRef.current.fitBounds(leafletBounds)
+    }
 
-    setCurrentLayer(newLayer)
+    setCurrentLayer(tmsLayer)
     setSelected(layerId)
   }
 
   // Handle basemap change
   const changeBasemap = (type) => {
-    // In a real implementation, this would switch the base layer
     setBasemap(type)
+    // In a real implementation, this would switch the base layer
   }
+
+  // Mock POI data for Zurich
+  const pois = [
+    { name: 'Hauptbahnhof', lat: 47.3784, lng: 8.5403, type: 'transport', color: '#3B82F6' },
+    { name: 'ETH Zürich', lat: 47.3765, lng: 8.5487, type: 'education', color: '#10B981' },
+    { name: 'Universität Zürich', lat: 47.3739, lng: 8.5506, type: 'education', color: '#10B981' },
+    { name: 'Zürichsee', lat: 47.3667, lng: 8.5500, type: 'nature', color: '#06B6D4' },
+    { name: 'Bahnhofstrasse', lat: 47.3769, lng: 8.5399, type: 'shopping', color: '#F59E0B' }
+  ]
 
   // Toggle POIs
   const togglePOIs = () => {
@@ -291,8 +293,8 @@ function MapComponent() {
       <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="p-4 bg-white rounded-lg shadow-sm border">
           <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
-            Layer auswählen
+            <Layers className="w-4 h-4" />
+            TMS Layer auswählen
           </label>
           <select 
             value={selected} 
@@ -301,9 +303,12 @@ function MapComponent() {
           >
             <option value="">-- Basis Layer --</option>
             {layers.map(l => (
-              <option key={l.id} value={l.id}>{l.name}</option>
+              <option key={l.id} value={l.id}>{l.id}</option>
             ))}
           </select>
+          {layers.length === 0 && (
+            <p className="text-xs text-gray-500 mt-1">Keine TMS Layer verfügbar</p>
+          )}
         </div>
 
         <div className="p-4 bg-white rounded-lg shadow-sm border">
@@ -356,7 +361,7 @@ function MapComponent() {
         <div ref={mapRef} className="w-full h-full" style={{ minHeight: '400px' }}></div>
         
         {/* Loading overlay */}
-        {!mapInstanceRef.current && (
+        {loading && (
           <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center">
             <div className="text-center">
               <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -391,7 +396,7 @@ function MapComponent() {
             {selected && (
               <div className="flex items-center gap-2 pt-1 border-t">
                 <div className="w-3 h-3 bg-blue-500 rounded border"></div>
-                <span>DXF Layer</span>
+                <span>TMS Layer</span>
               </div>
             )}
           </div>
@@ -406,6 +411,11 @@ function MapComponent() {
               {mapInstanceRef.current ? 'Verbunden' : 'Lädt...'}
             </span>
           </div>
+          {layers.length > 0 && (
+            <div className="text-xs text-gray-500 mt-1">
+              {layers.length} TMS Layer verfügbar
+            </div>
+          )}
         </div>
       </div>
 
@@ -416,7 +426,7 @@ function MapComponent() {
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-blue-600" />
               <span className="font-medium text-blue-900">
-                Aktiver Layer: {layers.find(l => l.id === selected)?.name}
+                Aktiver TMS Layer: {selected}
               </span>
             </div>
             <button 
@@ -432,7 +442,7 @@ function MapComponent() {
   )
 }
 
-// PDF Preview Modal Component
+// PDF Preview Modal Component (adapted for real backend data)
 function PDFPreviewModal({ file, isOpen, onClose, onDownload }) {
   if (!isOpen || !file) return null
 
@@ -444,7 +454,7 @@ function PDFPreviewModal({ file, isOpen, onClose, onDownload }) {
             <FileText className="w-6 h-6 text-blue-600" />
             <div>
               <h3 className="text-lg font-semibold">{file.name.replace('.dxf', '.pdf')}</h3>
-              <p className="text-sm text-gray-600">GeoPDF Vorschau • {file.geoPdfSize}</p>
+              <p className="text-sm text-gray-600">GeoPDF Vorschau • ID: {file.id.slice(0, 8)}</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -472,20 +482,28 @@ function PDFPreviewModal({ file, isOpen, onClose, onDownload }) {
               <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <p className="text-lg font-medium text-gray-600">GeoPDF Vorschau</p>
               <p className="text-sm text-gray-500 mt-2">
-                {file.name.replace('.dxf', '.pdf')} • Größe: {file.geoPdfSize}
+                {file.name.replace('.dxf', '.pdf')}
               </p>
               <div className="mt-4 grid grid-cols-2 gap-4 text-xs text-gray-600">
                 <div className="text-left">
                   <p><strong>Originalformat:</strong> DXF</p>
-                  <p><strong>Konvertiert:</strong> {file.uploadDate}</p>
+                  <p><strong>Datei-ID:</strong> {file.id}</p>
                   <p><strong>Projektionsystem:</strong> LV95 (EPSG:2056)</p>
                 </div>
                 <div className="text-left">
-                  <p><strong>Maßstab:</strong> 1:1000</p>
-                  <p><strong>Downloads:</strong> {file.downloadCount}x</p>
-                  <p><strong>Status:</strong> Verfügbar</p>
+                  <p><strong>Status:</strong> {file.converted ? 'Konvertiert' : 'In Bearbeitung'}</p>
+                  <p><strong>TMS Layer:</strong> {file.static_folder ? 'Verfügbar' : 'Nicht verfügbar'}</p>
+                  <p><strong>Backend:</strong> QGIS Processing</p>
                 </div>
               </div>
+              {file.static_folder && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>TMS Endpoint:</strong><br />
+                    <code className="text-xs">{file.static_folder}</code>
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -667,9 +685,9 @@ function BulkDownloadPanel({ files, onSelectAll, onDownloadSelected, selectedFil
 }
 
 function App() {
-  const [files, setFiles] = useState(mockFiles)
+  const [files, setFiles] = useState([])
   const [page, setPage] = useState('upload')
-  const [token, setToken] = useState('demo-token') // For demo purposes
+  const [token, setToken] = useState(() => localStorage.getItem('token'))
   const [toast, setToast] = useState(null)
   const [convertingFiles, setConvertingFiles] = useState(new Set())
   
@@ -677,22 +695,56 @@ function App() {
   const [previewModal, setPreviewModal] = useState({ isOpen: false, file: null })
   const [downloadProgress, setDownloadProgress] = useState(null)
   const [selectedFiles, setSelectedFiles] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {}
 
   const showToast = (message, type = 'info') => {
     setToast({ message, type })
   }
 
-  const handleLogin = async (username, password) => {
-    if (username && password) {
-      setToken('demo-token')
-      showToast('Erfolgreich angemeldet!', 'success')
-    } else {
-      showToast('Login fehlgeschlagen', 'error')
+  // Fetch files from backend
+  const refreshFiles = async () => {
+    if (!token) return
+    
+    setLoading(true)
+    try {
+      const response = await fetch(`${API}/files`, { 
+        headers: authHeaders 
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setFiles(data)
+      } else if (response.status === 401) {
+        handleLogout()
+      } else {
+        showToast('Fehler beim Laden der Dateien', 'error')
+      }
+    } catch (error) {
+      showToast('Verbindungsfehler beim Laden der Dateien', 'error')
+    } finally {
+      setLoading(false)
     }
+  }
+
+  // Load files on token change
+  useEffect(() => {
+    if (token) {
+      refreshFiles()
+    }
+  }, [token])
+
+  const handleLogin = async (receivedToken) => {
+    setToken(receivedToken)
+    localStorage.setItem('token', receivedToken)
+    showToast('Erfolgreich angemeldet!', 'success')
   }
 
   const handleLogout = () => {
     setToken(null)
+    localStorage.removeItem('token')
+    setFiles([])
+    setSelectedFiles([])
     showToast('Erfolgreich abgemeldet', 'info')
   }
 
@@ -700,45 +752,61 @@ function App() {
     const file = e.target.files[0]
     if (!file) return
     
-    const newFile = {
-      id: Date.now(),
-      name: file.name,
-      converted: false,
-      uploadDate: new Date().toISOString().split('T')[0],
-      size: (file.size / 1024 / 1024).toFixed(1) + ' MB',
-      geoPdfSize: null,
-      downloadCount: 0,
-      previewUrl: null,
-      downloadUrl: null
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    try {
+      const response = await fetch(`${API}/upload`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: formData
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        showToast('Datei erfolgreich hochgeladen!', 'success')
+        refreshFiles()
+      } else if (response.status === 401) {
+        handleLogout()
+      } else {
+        showToast('Fehler beim Hochladen der Datei', 'error')
+      }
+    } catch (error) {
+      showToast('Verbindungsfehler beim Upload', 'error')
     }
     
-    setFiles(prev => [...prev, newFile])
-    showToast('Datei erfolgreich hochgeladen!', 'success')
     e.target.value = ''
   }
 
-  const handleConvert = async (id) => {
-    setConvertingFiles(prev => new Set([...prev, id]))
+  const handleConvert = async (fileId) => {
+    setConvertingFiles(prev => new Set([...prev, fileId]))
     showToast('Konvertierung gestartet...', 'info')
     
-    // Simulate conversion delay
-    setTimeout(() => {
-      setFiles(prev => prev.map(f => 
-        f.id === id ? { 
-          ...f, 
-          converted: true,
-          geoPdfSize: (parseFloat(f.size) * 2.1).toFixed(1) + ' MB',
-          previewUrl: `/api/preview/${id}`,
-          downloadUrl: `/api/download/${id}`
-        } : f
-      ))
+    try {
+      const response = await fetch(`${API}/convert/${fileId}`, {
+        method: 'POST',
+        headers: authHeaders
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        showToast('Konvertierung abgeschlossen! GeoPDF ist verfügbar.', 'success')
+        refreshFiles()
+      } else if (response.status === 401) {
+        handleLogout()
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        showToast(`Konvertierung fehlgeschlagen: ${errorData.detail || 'Unbekannter Fehler'}`, 'error')
+      }
+    } catch (error) {
+      showToast('Verbindungsfehler bei der Konvertierung', 'error')
+    } finally {
       setConvertingFiles(prev => {
         const newSet = new Set(prev)
-        newSet.delete(id)
+        newSet.delete(fileId)
         return newSet
       })
-      showToast('Konvertierung abgeschlossen! GeoPDF ist verfügbar.', 'success')
-    }, 3000)
+    }
   }
 
   const handlePreview = (file) => {
@@ -749,49 +817,61 @@ function App() {
     setPreviewModal({ isOpen: false, file: null })
     setDownloadProgress({ fileName: file.name.replace('.dxf', '.pdf'), progress: 0 })
     
-    // Simulate download progress
-    const progressInterval = setInterval(() => {
-      setDownloadProgress(prev => {
-        if (!prev) return null
-        const newProgress = prev.progress + 10
-        if (newProgress >= 100) {
-          clearInterval(progressInterval)
-          setTimeout(() => {
-            setDownloadProgress(null)
-            // Update download count
-            setFiles(prevFiles => prevFiles.map(f => 
-              f.id === file.id ? { ...f, downloadCount: f.downloadCount + 1 } : f
-            ))
-            showToast('GeoPDF erfolgreich heruntergeladen!', 'success')
-            
-            // Simulate actual download
-            const link = document.createElement('a')
-            link.href = `data:application/pdf;base64,JVBERi0xLjQKJcfsj6IKCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoKMiAwIG9iago8PAovVHlwZSAvUGFnZXMKL0tpZHMgWzMgMCBSXQovQ291bnQgMQo+PgplbmRvYmoKCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQovQ29udGVudHMgNCAwIFIKPj4KZW5kb2JqCgo0IDAgb2JqCjw8Ci9MZW5ndGggNDQKPj4Kc3RyZWFtCkJUCi9GMSAxMiBUZgoxMDAgNzAwIFRkCihHZW9QREYgU2FtcGxlKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCgo1IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9TdWJ0eXBlIC9UeXBlMQovQmFzZUZvbnQgL0hlbHZldGljYQo+PgplbmRvYmoKCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAwOSAwMDAwMCBuIAowMDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxMTUgMDAwMDAgbiAKMDAwMDAwMDIwNCAwMDAwMCBuIAowMDAwMDAwMjk5IDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgNgovUm9vdCAxIDAgUgo+PgpzdGFydHhyZWYKMzY5CiUlRU9G`
-            link.download = file.name.replace('.dxf', '.pdf')
-            link.click()
-          }, 500)
-          return null
-        }
-        return { ...prev, progress: newProgress }
-      })
-    }, 200)
-  }
+    try {
+      // Start download with progress simulation
+      const progressInterval = setInterval(() => {
+        setDownloadProgress(prev => {
+          if (!prev) return null
+          const newProgress = prev.progress + 20
+          if (newProgress >= 100) {
+            clearInterval(progressInterval)
+            return { ...prev, progress: 100 }
+          }
+          return { ...prev, progress: newProgress }
+        })
+      }, 200)
 
-  const handleBulkDownload = () => {
-    if (selectedFiles.length === 0) return
-    
-    showToast(`${selectedFiles.length} GeoPDFs werden als ZIP heruntergeladen...`, 'info')
-    
-    // Simulate ZIP download
-    setTimeout(() => {
+      // Actual download
+      const downloadUrl = `${API}/download/${file.id}?token=${token}`
       const link = document.createElement('a')
-      link.href = `data:application/zip;base64,UEsDBBQAAAAIAAgAAABgS...` // Dummy ZIP data
-      link.download = `GeoPDFs_${new Date().toISOString().split('T')[0]}.zip`
+      link.href = downloadUrl
+      link.download = file.name.replace('.dxf', '.pdf')
       link.click()
       
-      setSelectedFiles([])
-      showToast('ZIP-Archiv erfolgreich heruntergeladen!', 'success')
-    }, 1000)
+      setTimeout(() => {
+        setDownloadProgress(null)
+        showToast('GeoPDF erfolgreich heruntergeladen!', 'success')
+        refreshFiles() // Refresh to update download count if backend tracks it
+      }, 1000)
+
+    } catch (error) {
+      setDownloadProgress(null)
+      showToast('Fehler beim Download', 'error')
+    }
+  }
+
+  const handleBulkDownload = async () => {
+    if (selectedFiles.length === 0) return
+    
+    showToast(`${selectedFiles.length} GeoPDFs werden heruntergeladen...`, 'info')
+    
+    // Download each file individually (since backend doesn't have bulk endpoint)
+    for (const fileId of selectedFiles) {
+      const file = files.find(f => f.id === fileId)
+      if (file && file.converted) {
+        const downloadUrl = `${API}/download/${fileId}?token=${token}`
+        const link = document.createElement('a')
+        link.href = downloadUrl
+        link.download = file.name.replace('.dxf', '.pdf')
+        link.click()
+        
+        // Small delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+    }
+    
+    setSelectedFiles([])
+    showToast('Alle GeoPDFs heruntergeladen!', 'success')
   }
 
   const handleSelectFile = (fileId) => {
@@ -804,7 +884,9 @@ function App() {
 
   const handleSelectAll = () => {
     const convertedFileIds = files.filter(f => f.converted).map(f => f.id)
-    setSelectedFiles(convertedFileIds)
+    setSelectedFiles(
+      selectedFiles.length === convertedFileIds.length ? [] : convertedFileIds
+    )
   }
 
   const getStatusIcon = (file) => {
@@ -819,6 +901,19 @@ function App() {
   const getStatusText = (file) => {
     if (convertingFiles.has(file.id)) return 'Konvertierung läuft...'
     return file.converted ? 'Konvertiert' : 'Wartet auf Konvertierung'
+  }
+
+  const formatFileSize = (sizeStr) => {
+    // Backend returns file size, we estimate GeoPDF size
+    if (typeof sizeStr === 'string' && sizeStr.includes('MB')) {
+      const size = parseFloat(sizeStr)
+      return (size * 2.1).toFixed(1) + ' MB'
+    }
+    return 'N/A'
+  }
+
+  if (!token) {
+    return <Login onLogin={handleLogin} />
   }
 
   if (!token) {
@@ -953,9 +1048,9 @@ function App() {
                       <Download className="w-5 h-5 text-cyan-600" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Downloads</p>
+                      <p className="text-sm text-gray-600">API Status</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {files.reduce((sum, f) => sum + f.downloadCount, 0)}
+                        {loading ? <div className="w-4 h-4 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin"></div> : 'OK'}
                       </p>
                     </div>
                   </div>
@@ -971,7 +1066,12 @@ function App() {
                   <h3 className="text-lg font-medium text-gray-900">Hochgeladene Dateien</h3>
                 </div>
                 
-                {files.length === 0 ? (
+                {loading ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p>Dateien werden geladen...</p>
+                  </div>
+                ) : files.length === 0 ? (
                   <div className="p-8 text-center text-gray-500">
                     <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                     <p>Noch keine Dateien hochgeladen</p>
@@ -998,9 +1098,8 @@ function App() {
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datei</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Größe</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GeoPDF</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Downloads</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TMS Layer</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
                           </tr>
                         </thead>
@@ -1028,28 +1127,20 @@ function App() {
                                   <FileText className="w-4 h-4 text-blue-500" />
                                   <div>
                                     <div className="font-medium text-gray-900">{file.name}</div>
-                                    <div className="text-xs text-gray-500">{file.uploadDate}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {file.converted ? 'GeoPDF verfügbar' : 'DXF Datei'}
+                                    </div>
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {file.size}
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                                {file.id.slice(0, 8)}...
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {file.converted ? (
+                                {file.converted && file.static_folder ? (
                                   <div className="flex items-center gap-1">
-                                    <CheckCircle className="w-3 h-3 text-green-500" />
-                                    <span>{file.geoPdfSize}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {file.converted ? (
-                                  <div className="flex items-center gap-1">
-                                    <Download className="w-3 h-3 text-blue-500" />
-                                    <span>{file.downloadCount}x</span>
+                                    <Layers className="w-3 h-3 text-green-500" />
+                                    <span>Verfügbar</span>
                                   </div>
                                 ) : (
                                   <span className="text-gray-400">-</span>
@@ -1107,9 +1198,9 @@ function App() {
             <div className="h-full">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Kartenansicht</h2>
-                <p className="text-gray-600">Konvertierte Layer auf der Karte anzeigen</p>
+                <p className="text-gray-600">Konvertierte TMS-Layer auf der Karte anzeigen</p>
               </div>
-              <MapComponent />
+              <MapComponent token={token} />
             </div>
           )}
         </main>
