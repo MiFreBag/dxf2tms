@@ -1,7 +1,7 @@
 # ---- Basis-Image mit QGIS ----
 FROM qgis/qgis:latest
 
-# System-Pakete installieren (inkl. Header und Compiler)
+# System-Pakete installieren (inkl. Header, Compiler & QGIS-Python)
 RUN apt-get update && apt-get install -y \
     python3-venv \
     python3-dev \
@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     libgdal-dev \
     python3-gdal \
     gdal-bin \
+    python3-qgis \
     curl \
   && rm -rf /var/lib/apt/lists/*
 
@@ -29,10 +30,13 @@ RUN mkdir -p /tmp/runtime-root && chmod 700 /tmp/runtime-root
 # Arbeitsverzeichnis setzen
 WORKDIR /app
 
-# Anforderungen kopieren und in der venv installieren
+# Anforderungen kopieren
 COPY server/requirements.txt /app/requirements.txt
-RUN pip install --upgrade pip --no-cache-dir \
- && pip install --no-cache-dir -r requirements.txt
+
+# qgis-python aus requirements filtern und restliche Pakete installieren
+RUN sed '/^qgis-python==/d' requirements.txt > req_clean.txt \
+ && pip install --upgrade pip --no-cache-dir \
+ && pip install --no-cache-dir -r req_clean.txt
 
 # App-Code kopieren und notwendige Ordner anlegen
 COPY server/ /app/
