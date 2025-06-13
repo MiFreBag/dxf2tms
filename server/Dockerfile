@@ -1,13 +1,16 @@
 # ---- Basis-Image mit QGIS ----
 FROM qgis/qgis:latest
 
-# System-Pakete installieren (inkl. venv und curl)
+# System-Pakete installieren (inkl. Header und Compiler)
 RUN apt-get update && apt-get install -y \
     python3-venv \
+    python3-dev \
+    build-essential \
+    libgdal-dev \
     python3-gdal \
     gdal-bin \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/*
 
 # QGIS-Umgebungsvariablen
 ENV QGIS_PREFIX_PATH=/usr \
