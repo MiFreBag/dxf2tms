@@ -91,7 +91,7 @@ pipeline {
                 sh """
                     docker buildx build \
                         -t ${docker_registry}:5001/${produced_docker_image_base}-frontend:latest \
-                        -f Docker/Dockerfile-frontend \
+                        -f client/Dockerfile \
                         --push \
                         .
                 """
@@ -102,7 +102,7 @@ pipeline {
             steps {
                 sh """
                     docker buildx build \
-                    -f Docker/Dockerfile-backend \
+                    -f server/Dockerfile \
                     -t ${docker_registry}:5001/${produced_docker_image_base}-backend:latest \
                     --push \
                     .
