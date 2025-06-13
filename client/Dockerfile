@@ -1,13 +1,29 @@
-# Build stage
-FROM node:18 AS build
+# ---- Build-Stage ----
+FROM node:18-alpine AS builder
+
+# Arbeitsverzeichnis
 WORKDIR /app
-COPY package*.json ./
+
+# Nur die Lockfiles kopieren, damit npm ci immer funktioniert
+COPY package.json package-lock.json ./
+
+# Dependencies sauber installieren
 RUN npm ci
+
+# Rest des Quellcodes
 COPY . .
+
+# Produktion-Build
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
+# ---- Production-Stage ----
+FROM nginx:stable-alpine AS production
+
+# Statisches Build ins nginx-Verzeichnis kopieren
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Port freigeben
 EXPOSE 80
+
+# nginx im Vordergrund starten
 CMD ["nginx", "-g", "daemon off;"]
