@@ -24,38 +24,7 @@ function Toast({ message, type, onClose }) {
   )
 }
 
-// Enhanced Login component with real API
-function Login({ onLogin }) {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
-  const submit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    
-    try {
-      const response = await fetch(`${API}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        localStorage.setItem('token', data.access_token)
-        onLogin(data.access_token)
-      } else {
-        setError('Login fehlgeschlagen - Bitte prüfen Sie Ihre Eingaben')
-      }
-    } catch (err) {
-      setError('Verbindungsfehler - Bitte versuchen Sie es später erneut')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
