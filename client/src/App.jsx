@@ -24,74 +24,6 @@ function Toast({ message, type, onClose }) {
   )
 }
 
-
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">Stadt Zürich DAV</h1>
-            <p className="text-gray-600 mt-2">DXF2GeoPDF Converter</p>
-          </div>
-          
-          <div onSubmit={submit}>
-            <div className="space-y-6">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Benutzer</label>
-                <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Benutzername eingeben"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Passwort</label>
-                <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  type="password"
-                  placeholder="Passwort eingeben"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <button 
-                type="button"
-                onClick={submit}
-                disabled={loading}
-                className="w-full bg-blue-900 hover:bg-blue-800 text-white py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Anmelden...
-                  </>
-                ) : (
-                  'Anmelden'
-                )}
-              </button>
-              <div className="text-sm text-gray-500 text-center">
-                Demo: admin / admin123
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // Enhanced Map component with real Leaflet and TMS integration
 function MapComponent({ token }) {
   const mapRef = useRef(null)
@@ -558,6 +490,7 @@ function FileUploadArea({ onUpload }) {
     </div>
   )
 }
+
 function BulkDownloadPanel({ files, onSelectAll, onDownloadSelected, selectedFiles }) {
   const convertedFiles = files.filter(f => f.converted)
   const selectedCount = selectedFiles.length
@@ -599,56 +532,6 @@ function BulkDownloadPanel({ files, onSelectAll, onDownloadSelected, selectedFil
           )}
         </div>
       </div>
-    </div>
-  )
-}
-  const [dragOver, setDragOver] = useState(false)
-
-  const handleDrop = (e) => {
-    e.preventDefault()
-    setDragOver(false)
-    const files = Array.from(e.dataTransfer.files)
-    const dxfFile = files.find(f => f.name.toLowerCase().endsWith('.dxf'))
-    if (dxfFile) {
-      onUpload({ target: { files: [dxfFile] } })
-    }
-  }
-
-  const handleDragOver = (e) => {
-    e.preventDefault()
-    setDragOver(true)
-  }
-
-  const handleDragLeave = () => {
-    setDragOver(false)
-  }
-
-  return (
-    <div 
-      className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
-        dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-      }`}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-    >
-      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-      <p className="text-lg font-medium text-gray-700 mb-2">DXF-Dateien hier ablegen</p>
-      <p className="text-sm text-gray-500 mb-4">oder klicken Sie, um Dateien auszuwählen</p>
-      <input 
-        type="file" 
-        accept=".dxf" 
-        onChange={onUpload} 
-        className="hidden" 
-        id="file-upload"
-      />
-      <label 
-        htmlFor="file-upload" 
-        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors"
-      >
-        <Plus className="w-4 h-4" />
-        Datei auswählen
-      </label>
     </div>
   )
 }
@@ -879,10 +762,6 @@ function App() {
       return (size * 2.1).toFixed(1) + ' MB'
     }
     return 'N/A'
-  }
-
-  if (!token) {
-    return <Login onLogin={handleLogin} />
   }
 
   if (!token) {
