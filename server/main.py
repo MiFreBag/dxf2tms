@@ -308,6 +308,7 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
         files[file_id] = {
             "id": file_id,
             "name": file.filename,
+            "path": dxf_path,  # Pfad hinzufügen
             "size": len(content),
             "converted": False,
             "uploaded_at": datetime.utcnow().isoformat(),
