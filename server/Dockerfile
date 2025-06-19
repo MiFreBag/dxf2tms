@@ -21,7 +21,7 @@ ENV QGIS_PREFIX_PATH=/usr \
     LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
 
 # Virtuelle Umgebung anlegen und aktivieren
-RUN python3 -m venv /opt/venv
+RUN python3 -m venv --system-site-packages /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Runtime-Dir für offscreen Rendering
