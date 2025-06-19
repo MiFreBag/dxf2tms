@@ -489,6 +489,13 @@ function App() {
                                         <Download className="w-3 h-3" />
                                         Download
                                       </button>
+                                      <button 
+                                        onClick={() => handleDownloadGeoPDF(file)}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
+                                      >
+                                        <Download className="w-3 h-3" />
+                                        GeoPDF herunterladen
+                                      </button>
                                     </div>
                                   )}
                                   <button 
