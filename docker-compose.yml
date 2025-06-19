@@ -68,13 +68,6 @@ services:
       - n8n_data:/home/node/.n8n
     restart: always
 
-  tileserver:
-    image: maptiler/tileserver-gl
-    ports:
-      - "8080:80"
-    volumes:
-      - ./server/output:/data
-    restart: always
 
   tileserver-gl:
     image: maptiler/tileserver-gl
