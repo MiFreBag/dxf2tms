@@ -5,15 +5,15 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: '/',
   plugins: [react()],
-  server: {
+ server: {
     port: 5174,
-    host: '0.0.0.0', // Erlaubt Zugriff von anderen IPs
+    host: '0.0.0.0', // Wichtig: Erlaubt Zugriff von anderen IPs
     strictPort: true,
     hmr: {
-      // Diese Konfiguration ist für Docker-Setups oft besser
-      clientPort: 5174,
-      host: 'localhost',
+      port: 5174,
+      host: '10.254.64.14' // or your actual IP if needed
     }
+
   },
   build: {
     outDir: 'dist',
