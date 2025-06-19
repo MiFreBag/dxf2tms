@@ -83,6 +83,9 @@ function App() {
       } else if (response.status === 403) {
         addMessage('Authentifizierungsfehler: Bitte melden Sie sich erneut an.', 'error');
         console.error('Upload error: Forbidden');
+        // Token löschen und Benutzer zur Anmeldung auffordern
+        localStorage.removeItem('token');
+        window.location.href = '/login';
       } else {
         throw new Error('Upload failed');
       }

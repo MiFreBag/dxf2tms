@@ -49,16 +49,14 @@ def create_token(username: str) -> str:
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(auth_scheme)) -> str:
     """JWT Token verifizieren"""
     try:
-        logger.info(f"Empfangenes Token: {credentials.credentials}")
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=["HS256"])
-        logger.info(f"Token erfolgreich verifiziert: {payload}")
-        return payload.get("sub")
+        return payload["sub"]
     except jwt.ExpiredSignatureError:
-        logger.error("Token ist abgelaufen")
-        raise HTTPException(status_code=401, detail="Token ist abgelaufen")
+        logger.error("Token abgelaufen")
+        raise HTTPException(status_code=403, detail="Token abgelaufen")
     except jwt.InvalidTokenError:
-        logger.error("Token ist ungültig")
-        raise HTTPException(status_code=401, detail="Token ist ungültig")
+        logger.error("Ungültiges Token")
+        raise HTTPException(status_code=403, detail="Ungültiges Token")
     except Exception as e:
         logger.error(f"Unerwarteter Fehler bei der Token-Überprüfung: {e}")
         raise HTTPException(status_code=500, detail="Unerwarteter Fehler bei der Token-Überprüfung")
