@@ -75,7 +75,7 @@ app = FastAPI(
 # CORS middleware for development and local frontend/backend separation
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://10.254.64.14"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

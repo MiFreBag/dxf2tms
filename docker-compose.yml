@@ -76,6 +76,15 @@ services:
       - ./server/output:/data
     restart: always
 
+  tileserver-gl:
+    image: maptiler/tileserver-gl
+    container_name: tileserver-gl
+    ports:
+      - "8080:80"
+    volumes:
+      - ./server/output:/data
+    restart: unless-stopped
+
 volumes:
   n8n_data:
   uploads:

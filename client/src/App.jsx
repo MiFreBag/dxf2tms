@@ -80,6 +80,9 @@ function App() {
         console.log('Upload result:', result); // Verwendung hinzugefügt
         addMessage(`${selectedFiles.length} Datei(en) erfolgreich hochgeladen`, 'success');
         await fetchFiles();
+      } else if (response.status === 403) {
+        addMessage('Authentifizierungsfehler: Bitte melden Sie sich erneut an.', 'error');
+        console.error('Upload error: Forbidden');
       } else {
         throw new Error('Upload failed');
       }
