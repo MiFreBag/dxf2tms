@@ -13,9 +13,9 @@ import {
   Menu,
   X
 } from 'lucide-react'
-import Map from './Map.jsx' // Import der Map Komponente
-import ServiceTaskManager from './assets/ServiceTaskManager.jsx';
-import ContainerMonitor from './assets/ContainerMonitor.jsx';
+import Map from './components/Map.jsx' // Import der Map Komponente
+import ServiceTaskManager from './components/ServiceTaskManager.jsx';
+import ContainerMonitor from './components/ContainerMonitor.jsx';
 
 const API = '/api'
 

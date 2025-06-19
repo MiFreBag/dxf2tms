@@ -18,7 +18,9 @@ import {
   FilterIcon,
   CheckCircle,
   AlertCircle,
-  X
+  X,
+  Map,
+  Navigation
 } from 'lucide-react'
 
 const API = '/api'
@@ -268,7 +270,191 @@ function PropertiesPanel({ selectedObject, onPropertyChange, onSave }) {
   )
 }
 
-// SVG-Viewer Komponente
+// Leaflet-Karte Komponente
+function LeafletMap({ objects, selectedObjects, onObjectClick, tool, onMapClick }) {
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
+  const markersRef = useRef({})
+  const [mapLoaded, setMapLoaded] = useState(false)
+
+  // Leaflet initialisieren
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return
+
+    // Leaflet CSS laden
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'
+    document.head.appendChild(link)
+
+    // Leaflet JavaScript laden
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'
+    script.onload = () => {
+      // Karte initialisieren
+      mapInstanceRef.current = window.L.map(mapRef.current).setView([47.3769, 8.5417], 15)
+
+      // Basiskarte hinzufügen
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(mapInstanceRef.current)
+
+      // Click-Handler für die Karte
+      mapInstanceRef.current.on('click', (e) => {
+        if (tool === 'ADD' && onMapClick) {
+          onMapClick(e.latlng.lat, e.latlng.lng)
+        }
+      })
+
+      setMapLoaded(true)
+    }
+    document.head.appendChild(script)
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove()
+        mapInstanceRef.current = null
+      }
+    }
+  }, [])
+
+  // Marker aktualisieren
+  useEffect(() => {
+    if (!mapLoaded || !mapInstanceRef.current) return
+
+    // Alte Marker entfernen
+    Object.values(markersRef.current).forEach(marker => {
+      mapInstanceRef.current.removeLayer(marker)
+    })
+    markersRef.current = {}
+
+    // Neue Marker hinzufügen
+    objects.forEach(obj => {
+      if (obj.x && obj.y && !obj.unpositioned) {
+        // Koordinaten von Swiss Grid (oder anderem System) zu WGS84 konvertieren
+        // Hier vereinfacht - Sie müssen die tatsächliche Koordinatentransformation implementieren
+        const lat = obj.y / 100000 + 47.0 // Vereinfachte Umrechnung
+        const lng = obj.x / 100000 + 8.0
+
+        const isSelected = selectedObjects.includes(obj.id)
+        
+        // Icon basierend auf Kategorie
+        const iconColor = getIconColor(obj.category)
+        const iconHtml = `
+          <div style="
+            background-color: ${isSelected ? '#3B82F6' : iconColor};
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+          ">
+            ${getCategoryIcon(obj.category)}
+          </div>
+        `
+
+        const customIcon = window.L.divIcon({
+          html: iconHtml,
+          className: 'custom-div-icon',
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
+        })
+
+        const marker = window.L.marker([lat, lng], { icon: customIcon })
+          .bindTooltip(`${obj.name || obj.id} (${obj.category || 'Unbekannt'})`)
+          .on('click', () => onObjectClick(obj.id))
+
+        marker.addTo(mapInstanceRef.current)
+        markersRef.current[obj.id] = marker
+      }
+    })
+  }, [objects, selectedObjects, mapLoaded, onObjectClick])
+
+  const getIconColor = (category) => {
+    const colors = {
+      'AMPELMAST': '#EF4444',
+      'AMPEL': '#F59E0B',
+      'DETEKTOR': '#10B981',
+      'STEUERGERAET': '#8B5CF6',
+      'SPUR': '#06B6D4',
+      'VVA': '#EC4899',
+      'META': '#6B7280',
+      'KNOTEN': '#F97316'
+    }
+    return colors[category] || '#6B7280'
+  }
+
+  const getCategoryIcon = (category) => {
+    const icons = {
+      'AMPELMAST': '⚡',
+      'AMPEL': '🚦',
+      'DETEKTOR': '👁',
+      'STEUERGERAET': '⚙',
+      'SPUR': '🛣',
+      'VVA': '📡',
+      'META': 'ℹ',
+      'KNOTEN': '🔗'
+    }
+    return icons[category] || '📍'
+  }
+
+  return (
+    <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="border-b border-gray-200 p-4 flex items-center justify-between">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Map className="w-5 h-5" />
+          Geopos Karte
+        </h3>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => mapInstanceRef.current?.zoomIn()}
+            className="p-1 rounded hover:bg-gray-100"
+            disabled={!mapLoaded}
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => mapInstanceRef.current?.zoomOut()}
+            className="p-1 rounded hover:bg-gray-100"
+            disabled={!mapLoaded}
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => mapInstanceRef.current?.setView([47.3769, 8.5417], 15)}
+            className="p-1 rounded hover:bg-gray-100"
+            disabled={!mapLoaded}
+          >
+            <Navigation className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+      
+      <div 
+        ref={mapRef} 
+        className="h-96"
+        style={{ 
+          cursor: tool === 'ADD' ? 'crosshair' : 'grab'
+        }}
+      />
+      
+      {!mapLoaded && (
+        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+          <div className="text-gray-500">Karte wird geladen...</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// SVG-Viewer Komponente (als Alternative zur Karte)
 function SVGViewer({ svgContent, onObjectClick, selectedObjects, tool }) {
   const svgRef = useRef(null)
   const [viewBox, setViewBox] = useState('0 0 1000 1000')
@@ -327,7 +513,7 @@ function SVGViewer({ svgContent, onObjectClick, selectedObjects, tool }) {
       <div className="border-b border-gray-200 p-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <MapPin className="w-5 h-5" />
-          Geopos Viewer
+          SVG Viewer
         </h3>
         
         <div className="flex items-center gap-2">
@@ -376,6 +562,7 @@ export default function GeoposClient({ token }) {
   const [svgContent, setSvgContent] = useState('')
   const [toast, setToast] = useState(null)
   const [multiSelect, setMultiSelect] = useState(false)
+  const [viewMode, setViewMode] = useState('map') // 'map' oder 'svg'
   
   const objects = layers.find(l => l.id === activeLayer)?.objects || []
 
@@ -519,10 +706,27 @@ export default function GeoposClient({ token }) {
     }
   }
 
+  const handleMapClick = (lat, lng) => {
+    if (activeTool === 'ADD') {
+      // Neues Objekt an der geklickten Position erstellen
+      const newObject = {
+        id: `NEW_${Date.now()}`,
+        name: 'Neues Objekt',
+        x: (lng - 8.0) * 100000, // Vereinfachte Rückkonvertierung
+        y: (lat - 47.0) * 100000,
+        category: 'META',
+        unpositioned: false
+      }
+      setSelectedObject(newObject)
+      showToast('Neues Objekt erstellt. Bitte Eigenschaften bearbeiten.', 'success')
+    }
+  }
+
   const tools = [
     { name: 'SELECT', icon: MousePointer },
     { name: 'VIEWBOX', icon: Square },
-    { name: 'MULTI', icon: Edit3 }
+    { name: 'MULTI', icon: Edit3 },
+    { name: 'ADD', icon: Plus }
   ]
 
   return (
@@ -547,6 +751,30 @@ export default function GeoposClient({ token }) {
                   onClick={handleToolChange}
                 />
               ))}
+              
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-1 ml-4 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('map')}
+                  className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
+                    viewMode === 'map' 
+                      ? 'bg-white text-blue-600 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Karte
+                </button>
+                <button
+                  onClick={() => setViewMode('svg')}
+                  className={`px-3 py-1 rounded-md text-sm transition-colors duration-200 ${
+                    viewMode === 'svg' 
+                      ? 'bg-white text-blue-600 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  SVG
+                </button>
+              </div>
             </div>
 
             {/* Aktionen */}
@@ -602,12 +830,22 @@ export default function GeoposClient({ token }) {
         </div>
 
         {/* Hauptansicht */}
-        <SVGViewer
-          svgContent={svgContent}
-          onObjectClick={handleObjectSelect}
-          selectedObjects={selectedObjects}
-          tool={activeTool}
-        />
+        {viewMode === 'map' ? (
+          <LeafletMap
+            objects={objects}
+            selectedObjects={selectedObjects}
+            onObjectClick={handleObjectSelect}
+            tool={activeTool}
+            onMapClick={handleMapClick}
+          />
+        ) : (
+          <SVGViewer
+            svgContent={svgContent}
+            onObjectClick={handleObjectSelect}
+            selectedObjects={selectedObjects}
+            tool={activeTool}
+          />
+        )}
 
         {/* Rechte Seitenleiste */}
         <PropertiesPanel
