@@ -69,7 +69,7 @@ services:
     restart: always
 
 
-  tileserver-gl:
+  tileserver:
     image: maptiler/tileserver-gl
     container_name: tileserver-gl
     volumes:
