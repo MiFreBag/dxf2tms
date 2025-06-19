@@ -33,8 +33,8 @@ WORKDIR /app
 # Anforderungen kopieren
 COPY requirements.txt /app/requirements.txt
 
-# qgis-python aus requirements filtern und restliche Pakete installieren
-RUN sed '/^qgis-python==/d' requirements.txt > req_clean.txt \
+# qgis-python und GDAL aus requirements filtern und restliche Pakete installieren
+RUN sed -e '/^qgis-python==/d' -e '/^GDAL==/d' requirements.txt > req_clean.txt \
  && pip install --upgrade pip --no-cache-dir \
  && pip install --no-cache-dir -r req_clean.txt
 
