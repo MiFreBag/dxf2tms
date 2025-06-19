@@ -61,47 +61,49 @@ function App() {
   }
 
   const handleUpload = async (event) => {
-    const selectedFiles = Array.from(event.target.files);
-    if (selectedFiles.length === 0) return;
+      const selectedFiles = Array.from(event.target.files);
+      if (selectedFiles.length === 0) return;
 
-    setUploading(true);
-    const formData = new FormData();
+      setUploading(true);
+      const formData = new FormData();
 
-    selectedFiles.forEach((file) => {
-      formData.append('files', file);
-    });
-
-    try {
-      const response = await fetch(`${API}/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`, // Token hinzugefügt
-        },
-        body: formData,
+      selectedFiles.forEach((file) => {
+        formData.append('files', file);
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Upload result:', result); // Verwendung hinzugefügt
-        addMessage(`${selectedFiles.length} Datei(en) erfolgreich hochgeladen`, 'success');
-        await fetchFiles();
-      } else if (response.status === 403) {
-        addMessage('Authentifizierungsfehler: Bitte melden Sie sich erneut an.', 'error');
-        console.error('Upload error: Forbidden');
-        // Token löschen und Benutzer zur Anmeldung auffordern
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      } else {
-        throw new Error('Upload failed');
+      try {
+        const response = await fetch(`${API}/upload`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Upload result:', result);
+          addMessage(`${selectedFiles.length} Datei(en) erfolgreich hochgeladen`, 'success');
+          await fetchFiles();
+        } else if (response.status === 422) {
+          addMessage('Fehlerhafte Daten: Bitte überprüfen Sie die hochgeladenen Dateien.', 'error');
+          console.error('Upload error: Unprocessable Entity');
+        } else if (response.status === 403) {
+          addMessage('Authentifizierungsfehler: Bitte melden Sie sich erneut an.', 'error');
+          console.error('Upload error: Forbidden');
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        } else {
+          throw new Error('Upload failed');
+        }
+      } catch (error) {
+        addMessage('Fehler beim Hochladen der Dateien', 'error');
+        console.error('Upload error:', error);
+      } finally {
+        setUploading(false);
+        event.target.value = '';
       }
-    } catch (error) {
-      addMessage('Fehler beim Hochladen der Dateien', 'error');
-      console.error('Upload error:', error);
-    } finally {
-      setUploading(false);
-      event.target.value = '';
-    }
-  }
+    };
 
   const handleConvert = async (file) => {
     if (convertingFiles.has(file.id)) return
