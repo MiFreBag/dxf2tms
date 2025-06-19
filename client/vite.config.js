@@ -8,7 +8,11 @@ export default defineConfig({
  server: {
     port: 5174,
     host: '0.0.0.0', // Wichtig: Erlaubt Zugriff von anderen IPs
-    strictPort: true
+    strictPort: true,
+    hmr: {
+      port: 5174,
+      host: '10.1.3.231' // or your actual IP if needed
+    }
 
   },
   build: {
