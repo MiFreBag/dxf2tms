@@ -395,26 +395,31 @@ async def download_file(file_id: str, user: str = Depends(verify_token)):
 async def delete_file(file_id: str, user: str = Depends(verify_token)):
     """Datei löschen"""
     try:
+        logger.info(f"Lösch-Endpoint aufgerufen für Datei-ID: {file_id}")
         info = files.get(file_id)
         if not info:
+            logger.warning(f"Datei mit ID {file_id} nicht gefunden")
             raise HTTPException(status_code=404, detail="File not found")
-        
+
         # Dateien löschen
         dxf_path = os.path.join(UPLOAD_DIR, f"{file_id}.dxf")
         pdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
-        
+
         for path in [dxf_path, pdf_path]:
             if os.path.exists(path):
+                logger.debug(f"Lösche Datei: {path}")
                 os.remove(path)
-        
+            else:
+                logger.warning(f"Datei nicht gefunden: {path}")
+
         # Aus Memory entfernen
         del files[file_id]
-        
-        logger.info(f"File deleted: {file_id}")
+
+        logger.info(f"Datei erfolgreich gelöscht: {file_id}")
         return {"message": "File deleted successfully"}
-        
+
     except Exception as e:
-        logger.error(f"Delete failed for {file_id}: {e}")
+        logger.error(f"Löschen fehlgeschlagen für Datei-ID {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Delete failed")
 
 @app.get("/containers")
