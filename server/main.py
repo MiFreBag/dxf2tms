@@ -286,18 +286,23 @@ def get_pdf_metadata(pdf_path: str):
 async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_token)):
     """DXF Datei hochladen"""
     try:
+        logger.info("Upload-Endpoint aufgerufen")
+        logger.debug(f"Benutzer: {user}")
+        logger.debug(f"Dateiname: {file.filename}")
+
         # Dateivalidierung
         if not file.filename.lower().endswith('.dxf'):
+            logger.warning("Ungültige Dateiendung")
             raise HTTPException(status_code=400, detail="Only DXF files are allowed")
-        
+
         file_id = str(uuid.uuid4())
         dxf_path = os.path.join(UPLOAD_DIR, f"{file_id}.dxf")
-        
+
         # Datei speichern
         content = await file.read()
         with open(dxf_path, "wb") as f:
             f.write(content)
-        
+
         # File info speichern
         files[file_id] = {
             "id": file_id,
@@ -307,12 +312,12 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
             "uploaded_at": datetime.utcnow().isoformat(),
             "uploaded_by": user
         }
-        
-        logger.info(f"File uploaded: {file.filename} (ID: {file_id})")
+
+        logger.info(f"Datei erfolgreich hochgeladen: {file.filename} (ID: {file_id})")
         return files[file_id]
-        
+
     except Exception as e:
-        logger.error(f"Upload failed: {e}")
+        logger.error(f"Upload fehlgeschlagen: {e}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @app.get("/files")
