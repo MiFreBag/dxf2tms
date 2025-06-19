@@ -84,6 +84,7 @@ services:
     volumes:
       - ./server/output:/data
     restart: unless-stopped
+    user: "1000:1000"
 
 volumes:
   n8n_data:
