@@ -34,7 +34,7 @@ function App() {
   // Fetch initial data
   useEffect(() => {
     if (!token) {
-      window.location.href = '/login';
+      setPage('login');
     } else {
       fetchFiles();
     }
@@ -240,13 +240,12 @@ function App() {
     return file.converted ? 'Bereit' : 'Warten'
   }
 
-  const handleLogin = (newToken) => {
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
-  };
-
-  if (!token) {
-    return <Login onLogin={handleLogin} />;
+  if (page === 'login') {
+    return <Login onLogin={(newToken) => {
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
+      setPage('upload');
+    }} />;
   }
 
   // Navigation items
