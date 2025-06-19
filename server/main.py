@@ -48,11 +48,19 @@ def create_token(username: str) -> str:
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(auth_scheme)) -> str:
     """JWT Token verifizieren"""
     try:
+        logger.info(f"Empfangenes Token: {credentials.credentials}")
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=["HS256"])
+        logger.info(f"Token erfolgreich verifiziert: {payload}")
         return payload.get("sub")
-    except jwt.PyJWTError as e:
-        logger.error(f"Token verification failed: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except jwt.ExpiredSignatureError:
+        logger.error("Token ist abgelaufen")
+        raise HTTPException(status_code=401, detail="Token ist abgelaufen")
+    except jwt.InvalidTokenError:
+        logger.error("Token ist ungültig")
+        raise HTTPException(status_code=401, detail="Token ist ungültig")
+    except Exception as e:
+        logger.error(f"Unerwarteter Fehler bei der Token-Überprüfung: {e}")
+        raise HTTPException(status_code=500, detail="Unerwarteter Fehler bei der Token-Überprüfung")
 
 # FastAPI App erstellen
 app = FastAPI(
