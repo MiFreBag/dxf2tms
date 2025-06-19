@@ -3,14 +3,18 @@ import os
 import logging
 from typing import Optional
 
-from qgis.core import (
-    QgsApplication, QgsProject, QgsVectorLayer, QgsPrintLayout, QgsLayoutItemMap,
-    QgsLayoutExporter, QgsLayoutPoint, QgsLayoutSize, QgsUnitTypes, QgsLineSymbol,
-    QgsFillSymbol, QgsMarkerSymbol, QgsCoordinateReferenceSystem, QgsLayoutItem,
-    QgsLayoutItemLabel, QgsLayoutItemScaleBar, QgsLayoutItemLegend
-)
-from qgis.PyQt.QtCore import QSizeF
-from qgis.PyQt.QtGui import QColor, QFont
+try:
+    from qgis.core import (
+        QgsApplication, QgsProject, QgsVectorLayer, QgsPrintLayout, QgsLayoutItemMap,
+        QgsLayoutExporter, QgsLayoutPoint, QgsLayoutSize, QgsUnitTypes, QgsLineSymbol,
+        QgsFillSymbol, QgsMarkerSymbol, QgsCoordinateReferenceSystem, QgsLayoutItem,
+        QgsLayoutItemLabel, QgsLayoutItemScaleBar, QgsLayoutItemLegend
+    )
+    from qgis.PyQt.QtCore import QSizeF
+    from qgis.PyQt.QtGui import QColor, QFont
+    QGIS_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - executed only without QGIS
+    QGIS_AVAILABLE = False
 
 # Logging konfigurieren
 logger = logging.getLogger(__name__)
@@ -35,6 +39,10 @@ class DXFToGeoPDFConverter:
         
     def initialize_qgis(self):
         """QGIS Application initialisieren"""
+        if not QGIS_AVAILABLE:
+            raise ModuleNotFoundError(
+                "QGIS Python bindings are required. Install QGIS or run the conversion inside the provided Docker container."
+            )
         try:
             # QGIS ohne GUI initialisieren
             self.qgs_app = QgsApplication([], False)
@@ -307,7 +315,7 @@ class DXFToGeoPDFConverter:
             logger.error(f"PDF export failed: {e}")
             raise
 
-def dxf_to_geopdf(dxf_path: str, pdf_path: str, 
+def dxf_to_geopdf(dxf_path: str, pdf_path: str,
                  crs_epsg: Optional[int] = None,
                  page_size: str = "A4",
                  dpi: int = 300) -> None:
@@ -324,6 +332,10 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
     Raises:
         Exception: Bei Fehlern während der Konvertierung
     """
+    if not QGIS_AVAILABLE:
+        raise ModuleNotFoundError(
+            "QGIS Python bindings are required. Install QGIS or run the conversion inside the provided Docker container."
+        )
     try:
         logger.info(f"Starting DXF to GeoPDF conversion: {dxf_path} -> {pdf_path}")
         
