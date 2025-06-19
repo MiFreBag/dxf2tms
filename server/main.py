@@ -344,44 +344,25 @@ async def list_tms():
 async def convert_file(file_id: str, user: str = Depends(verify_token)):
     """DXF zu GeoPDF konvertieren"""
     try:
-        # File info überprüfen
-        info = files.get(file_id)
-        if not info:
+        # Datei suchen
+        file_info = files.get(file_id)
+        if not file_info:
             raise HTTPException(status_code=404, detail="File not found")
-        
-        dxf_path = os.path.join(UPLOAD_DIR, f"{file_id}.dxf")
-        if not os.path.exists(dxf_path):
-            raise HTTPException(status_code=404, detail="DXF file not found")
-        
-        pdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
-        
-        # DXF zu GeoPDF konvertieren
-        logger.info(f"Starting conversion: {file_id}")
-        dxf_to_geopdf(dxf_path, pdf_path)
-        
-        # PDF Metadaten extrahieren
-        bounds, srs, resolution = get_pdf_metadata(pdf_path)
-        
-        # TMS Tiles generieren
-        job_id = str(uuid.uuid4())
-        static_dir = os.path.join(STATIC_ROOT, job_id)
-        
-        pdf_to_tms(pdf_path, static_dir, minzoom=0, maxzoom=6)
-        write_config(bounds, srs, resolution, 0, 6, static_dir)
-        write_openlayers_html(bounds, 0, 6, resolution, static_dir)
-        
-        # File info aktualisieren
-        info["converted"] = True
-        info["static_folder"] = f"/static/{job_id}/"
-        info["converted_at"] = datetime.utcnow().isoformat()
-        info["pdf_path"] = pdf_path
-        
-        logger.info(f"Conversion completed: {file_id}")
-        return {"static_folder": info["static_folder"], "job_id": job_id}
-        
+
+        dxf_path = file_info["path"]
+        geopdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
+
+        # Konvertierung durchführen
+        dxf_to_geopdf(dxf_path, geopdf_path)
+
+        # Datei als konvertiert markieren
+        file_info["converted"] = True
+        file_info["geopdf_path"] = geopdf_path
+
+        return {"message": "File converted successfully", "fileName": file_info["name"]}
     except Exception as e:
-        logger.error(f"Conversion failed for {file_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
+        logger.error(f"Error converting file {file_id}: {e}")
+        raise HTTPException(status_code=500, detail="Conversion failed")
 
 @app.get("/download/{file_id}")
 async def download_file(file_id: str, user: str = Depends(verify_token)):
