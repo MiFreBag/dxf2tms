@@ -368,25 +368,15 @@ async def convert_file(file_id: str, user: str = Depends(verify_token)):
 async def download_file(file_id: str, user: str = Depends(verify_token)):
     """GeoPDF Datei herunterladen"""
     try:
-        # File info überprüfen
-        info = files.get(file_id)
-        if not info or not info.get("converted"):
-            raise HTTPException(status_code=404, detail="File not found or not converted")
-        
-        pdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
-        if not os.path.exists(pdf_path):
-            raise HTTPException(status_code=404, detail="PDF file not found")
-        
-        return FileResponse(
-            pdf_path, 
-            filename=f"{info['name']}.pdf",
-            media_type="application/pdf"
-        )
-        
-    except Exception as e:
-        logger.error(f"Download failed for {file_id}: {e}")
-        raise HTTPException(status_code=500, detail="Download failed")
+        file_info = files.get(file_id)
+        if not file_info or not file_info.get("geopdf_path"):
+            raise HTTPException(status_code=404, detail="GeoPDF not found")
 
+        return FileResponse(file_info["geopdf_path"], filename=f"{file_info['name']}_converted.pdf")
+    except Exception as e:
+        logger.error(f"Error downloading GeoPDF for file {file_id}: {e}")
+        raise HTTPException(status_code=500, detail="Download failed")
+    
 @app.delete("/files/{file_id}")
 async def delete_file(file_id: str, user: str = Depends(verify_token)):
     """Datei löschen"""

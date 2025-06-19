@@ -185,6 +185,18 @@ function App() {
     }
   }
 
+  const handleDownloadGeoPDF = (file) => {
+    if (file.converted && file.geopdfPath) {
+      const link = document.createElement('a');
+      link.href = file.geopdfPath;
+      link.download = file.name.replace(/\.[^/.]+$/, '') + '_converted.pdf';
+      link.click();
+      addMessage('GeoPDF-Download gestartet', 'success');
+    } else {
+      addMessage('GeoPDF nicht verfügbar', 'error');
+    }
+  };
+
   const handleSelectFile = (fileId) => {
     setSelectedFiles(prev => 
       prev.includes(fileId) 
