@@ -79,13 +79,13 @@ services:
   tileserver-gl:
     image: maptiler/tileserver-gl
     container_name: tileserver-gl
-    ports:
-      - "8081:80"
     volumes:
       - ./server/output:/data:rw
       - ./tileserver:/data
     restart: unless-stopped
-    user: "1000:1000"
+    command: ["-p", "80", "-c", "/data/conf.json"]
+    ports:
+      - "8081:80"
 
 volumes:
   n8n_data:
