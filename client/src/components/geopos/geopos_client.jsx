@@ -20,8 +20,10 @@ import {
   AlertCircle,
   X,
   Map,
-  Navigation
+  Navigation,
+  RefreshCw
 } from 'lucide-react'
+import { swissToWgs84, wgs84ToSwiss, formatCoordinates, isValidSwissGrid } from '../utils/coordinates'
 
 const API = '/api'
 
@@ -171,6 +173,8 @@ function ObjectList({ objects, selectedObjects, onObjectSelect, filter, onFilter
 
 // Eigenschaften-Panel
 function PropertiesPanel({ selectedObject, onPropertyChange, onSave }) {
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
   if (!selectedObject) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-4 w-80">
@@ -180,6 +184,14 @@ function PropertiesPanel({ selectedObject, onPropertyChange, onSave }) {
     )
   }
 
+  // Koordinaten formatieren
+  const coordFormatted = formatCoordinates(
+    selectedObject.x, 
+    selectedObject.y,
+    selectedObject.lat,
+    selectedObject.lng
+  )
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 w-80">
       <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -187,55 +199,25 @@ function PropertiesPanel({ selectedObject, onPropertyChange, onSave }) {
         Eigenschaften
       </h3>
       
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-96 overflow-y-auto">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">ID</label>
           <input
             type="text"
             value={selectedObject.id}
             disabled
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
           />
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
           <input
             type="text"
             value={selectedObject.name || ''}
             onChange={(e) => onPropertyChange('name', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">X-Position</label>
-            <input
-              type="number"
-              value={selectedObject.x || 0}
-              onChange={(e) => onPropertyChange('x', parseFloat(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Y-Position</label>
-            <input
-              type="number"
-              value={selectedObject.y || 0}
-              onChange={(e) => onPropertyChange('y', parseFloat(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Rotation (°)</label>
-          <input
-            type="number"
-            value={selectedObject.rotation || 0}
-            onChange={(e) => onPropertyChange('rotation', parseFloat(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Objektname eingeben"
           />
         </div>
 
@@ -258,16 +240,153 @@ function PropertiesPanel({ selectedObject, onPropertyChange, onSave }) {
           </select>
         </div>
 
+        {/* Swiss Grid Koordinaten */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Swiss Grid Koordinaten (LV95)
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">X (Rechtswert)</label>
+              <input
+                type="number"
+                value={selectedObject.x || 0}
+                onChange={(e) => {
+                  const x = parseFloat(e.target.value) || 0
+                  onPropertyChange('x', x)
+                  // WGS84 Koordinaten neu berechnen
+                  if (selectedObject.y) {
+                    const { lat, lng } = swissToWgs84(x, selectedObject.y)
+                    onPropertyChange('lat', lat)
+                    onPropertyChange('lng', lng)
+                  }
+                }}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                min="2485000"
+                max="2835000"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Y (Hochwert)</label>
+              <input
+                type="number"
+                value={selectedObject.y || 0}
+                onChange={(e) => {
+                  const y = parseFloat(e.target.value) || 0
+                  onPropertyChange('y', y)
+                  // WGS84 Koordinaten neu berechnen
+                  if (selectedObject.x) {
+                    const { lat, lng } = swissToWgs84(selectedObject.x, y)
+                    onPropertyChange('lat', lat)
+                    onPropertyChange('lng', lng)
+                  }
+                }}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                min="1075000"
+                max="1295000"
+              />
+            </div>
+          </div>
+          <div className="mt-1 text-xs text-gray-500">
+            {coordFormatted.swiss}
+          </div>
+        </div>
+
+        {/* WGS84 Koordinaten (readonly) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            WGS84 Koordinaten (berechnet)
+          </label>
+          <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded border">
+            {coordFormatted.wgs84}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Rotation (°)</label>
+          <input
+            type="number"
+            value={selectedObject.rotation || 0}
+            onChange={(e) => onPropertyChange('rotation', parseFloat(e.target.value) || 0)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            min="0"
+            max="360"
+            step="0.1"
+          />
+        </div>
+
+        {/* Erweiterte Eigenschaften */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+          >
+            {showAdvanced ? '▼' : '▶'} Erweiterte Eigenschaften
+          </button>
+          
+          {showAdvanced && (
+            <div className="mt-2 space-y-3 pl-4 border-l-2 border-gray-200">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Symbol ID</label>
+                <input
+                  type="text"
+                  value={selectedObject.symbol_id || ''}
+                  onChange={(e) => onPropertyChange('symbol_id', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Symbol ID"
+                />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="unpositioned"
+                  checked={selectedObject.unpositioned || false}
+                  onChange={(e) => onPropertyChange('unpositioned', e.target.checked)}
+                  className="rounded"
+                />
+                <label htmlFor="unpositioned" className="text-sm text-gray-700">
+                  Nicht positioniert
+                </label>
+              </div>
+              
+              {selectedObject.attributes && Object.keys(selectedObject.attributes).length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Zusätzliche Attribute</label>
+                  <div className="text-xs bg-gray-50 p-2 rounded border max-h-20 overflow-y-auto">
+                    {Object.entries(selectedObject.attributes).map(([key, value]) => (
+                      <div key={key} className="flex justify-between">
+                        <span className="font-medium">{key}:</span>
+                        <span>{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Validierungshinweise */}
+        {selectedObject.x && selectedObject.y && !isValidSwissGrid(selectedObject.x, selectedObject.y) && (
+          <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
+            ⚠️ Koordinaten sind außerhalb des gültigen Swiss Grid Bereichs
+          </div>
+        )}
+
         <button
           onClick={onSave}
-          className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center gap-2"
+          disabled={!selectedObject.name?.trim() || (selectedObject.x && selectedObject.y && !isValidSwissGrid(selectedObject.x, selectedObject.y))}
+          className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center gap-2"
         >
           <Save className="w-4 h-4" />
-          Speichern
+          {selectedObject.id.startsWith('NEW_') ? 'Erstellen' : 'Speichern'}
         </button>
       </div>
     </div>
   )
+}
 }
 
 // Leaflet-Karte Komponente
@@ -331,10 +450,24 @@ function LeafletMap({ objects, selectedObjects, onObjectClick, tool, onMapClick 
     // Neue Marker hinzufügen
     objects.forEach(obj => {
       if (obj.x && obj.y && !obj.unpositioned) {
-        // Koordinaten von Swiss Grid (oder anderem System) zu WGS84 konvertieren
-        // Hier vereinfacht - Sie müssen die tatsächliche Koordinatentransformation implementieren
-        const lat = obj.y / 100000 + 47.0 // Vereinfachte Umrechnung
-        const lng = obj.x / 100000 + 8.0
+        // Koordinaten mit korrekter Swiss Grid Transformation
+        let lat, lng
+        
+        if (obj.lat && obj.lng) {
+          // Bereits transformierte Koordinaten vom Backend verwenden
+          lat = obj.lat
+          lng = obj.lng
+        } else {
+          // Lokale Transformation falls nötig
+          const transformed = swissToWgs84(obj.x, obj.y)
+          lat = transformed.lat
+          lng = transformed.lng
+        }
+
+        if (!lat || !lng) {
+          console.warn(`Ungültige Koordinaten für Objekt ${obj.id}:`, obj.x, obj.y)
+          return
+        }
 
         const isSelected = selectedObjects.includes(obj.id)
         
@@ -343,17 +476,19 @@ function LeafletMap({ objects, selectedObjects, onObjectClick, tool, onMapClick 
         const iconHtml = `
           <div style="
             background-color: ${isSelected ? '#3B82F6' : iconColor};
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 10px;
+            font-size: 12px;
             font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
           ">
             ${getCategoryIcon(obj.category)}
           </div>
@@ -361,13 +496,32 @@ function LeafletMap({ objects, selectedObjects, onObjectClick, tool, onMapClick 
 
         const customIcon = window.L.divIcon({
           html: iconHtml,
-          className: 'custom-div-icon',
-          iconSize: [20, 20],
-          iconAnchor: [10, 10]
+          className: 'custom-geopos-icon',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+          popupAnchor: [0, -12]
         })
 
+        // Popup-Content mit detaillierten Informationen
+        const popupContent = `
+          <div class="geopos-popup">
+            <h3 style="margin: 0 0 8px 0; color: ${iconColor};">${obj.name || obj.id}</h3>
+            <div style="font-size: 12px; color: #666;">
+              <div><strong>Kategorie:</strong> ${obj.category || 'Unbekannt'}</div>
+              <div><strong>Swiss Grid:</strong> ${obj.x?.toFixed(0)} / ${obj.y?.toFixed(0)}</div>
+              <div><strong>WGS84:</strong> ${lat?.toFixed(6)}° / ${lng?.toFixed(6)}°</div>
+              ${obj.rotation ? `<div><strong>Rotation:</strong> ${obj.rotation}°</div>` : ''}
+              ${obj.symbol_id ? `<div><strong>Symbol:</strong> ${obj.symbol_id}</div>` : ''}
+            </div>
+          </div>
+        `
+
         const marker = window.L.marker([lat, lng], { icon: customIcon })
-          .bindTooltip(`${obj.name || obj.id} (${obj.category || 'Unbekannt'})`)
+          .bindPopup(popupContent)
+          .bindTooltip(`${obj.name || obj.id}`, { 
+            offset: [0, -20],
+            direction: 'top'
+          })
           .on('click', () => onObjectClick(obj.id))
 
         marker.addTo(mapInstanceRef.current)
@@ -566,13 +720,17 @@ export default function GeoposClient({ token }) {
   
   const objects = layers.find(l => l.id === activeLayer)?.objects || []
 
-  // SVG-Daten laden
+  // SVG-Daten und Objekte laden
   useEffect(() => {
-    loadSVGData()
-    loadObjects()
-  }, [activeLayer])
+    if (activeLayer) {
+      loadSVGData()
+      loadObjects()
+    }
+  }, [activeLayer, token])
 
   const loadSVGData = async () => {
+    if (!token) return
+    
     try {
       const response = await fetch(`${API}/geopos/svg/${activeLayer}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -580,28 +738,46 @@ export default function GeoposClient({ token }) {
       if (response.ok) {
         const data = await response.text()
         setSvgContent(data)
+      } else {
+        console.warn(`SVG-Daten für Layer ${activeLayer} nicht verfügbar`)
       }
     } catch (error) {
       console.error('Fehler beim Laden der SVG-Daten:', error)
-      showToast('Fehler beim Laden der SVG-Daten', 'error')
+      // Kein Toast hier, da SVG optional ist
     }
   }
 
   const loadObjects = async () => {
+    if (!token) return
+    
     try {
       const response = await fetch(`${API}/geopos/objects/${activeLayer}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       if (response.ok) {
         const data = await response.json()
+        
+        // Daten validieren und bereinigen
+        const validObjects = data.filter(obj => {
+          if (!obj.id) {
+            console.warn('Objekt ohne ID ignoriert:', obj)
+            return false
+          }
+          return true
+        })
+        
         setLayers(prev => prev.map(layer => 
           layer.id === activeLayer 
-            ? { ...layer, objects: data }
+            ? { ...layer, objects: validObjects }
             : layer
         ))
+      } else {
+        console.error(`Fehler beim Laden der Objekte: ${response.status}`)
+        showToast('Fehler beim Laden der Objekte', 'error')
       }
     } catch (error) {
       console.error('Fehler beim Laden der Objekte:', error)
+      showToast('Netzwerkfehler beim Laden der Objekte', 'error')
     }
   }
 
@@ -655,26 +831,57 @@ export default function GeoposClient({ token }) {
   const handleSave = async () => {
     if (!selectedObject) return
 
+    // Validierung der Eingaben
+    if (!selectedObject.name?.trim()) {
+      showToast('Bitte geben Sie einen Namen ein', 'error')
+      return
+    }
+
+    if (!isValidSwissGrid(selectedObject.x, selectedObject.y)) {
+      showToast('Ungültige Swiss Grid Koordinaten', 'error')
+      return
+    }
+
     try {
-      const response = await fetch(`${API}/geopos/objects/${selectedObject.id}`, {
-        method: 'PUT',
+      const method = selectedObject.id.startsWith('NEW_') ? 'POST' : 'PUT'
+      const url = selectedObject.id.startsWith('NEW_') 
+        ? `${API}/geopos/objects` 
+        : `${API}/geopos/objects/${selectedObject.id}`
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(selectedObject)
+        body: JSON.stringify({
+          ...selectedObject,
+          // Koordinaten neu berechnen falls geändert
+          lat: selectedObject.lat || swissToWgs84(selectedObject.x, selectedObject.y).lat,
+          lng: selectedObject.lng || swissToWgs84(selectedObject.x, selectedObject.y).lng
+        })
       })
 
       if (response.ok) {
+        const result = await response.json()
+        
+        // Bei neuen Objekten die ID aktualisieren
+        if (selectedObject.id.startsWith('NEW_') && result.id) {
+          setSelectedObject(prev => ({ ...prev, id: result.id }))
+        }
+        
         showToast('Objekt erfolgreich gespeichert', 'success')
         loadObjects() // Objekte neu laden
-        loadSVGData() // SVG neu laden
+        if (viewMode === 'svg') {
+          loadSVGData() // SVG neu laden falls im SVG-Modus
+        }
       } else {
-        showToast('Fehler beim Speichern', 'error')
+        const error = await response.json()
+        showToast(error.detail || 'Fehler beim Speichern', 'error')
       }
     } catch (error) {
       console.error('Fehler beim Speichern:', error)
-      showToast('Fehler beim Speichern', 'error')
+      showToast('Netzwerkfehler beim Speichern', 'error')
     }
   }
 
@@ -708,18 +915,38 @@ export default function GeoposClient({ token }) {
 
   const handleMapClick = (lat, lng) => {
     if (activeTool === 'ADD') {
+      // WGS84 zu Swiss Grid konvertieren
+      const swissCoords = wgs84ToSwiss(lat, lng)
+      
+      if (!swissCoords.x || !swissCoords.y) {
+        showToast('Ungültige Koordinaten für Swiss Grid', 'error')
+        return
+      }
+
       // Neues Objekt an der geklickten Position erstellen
       const newObject = {
         id: `NEW_${Date.now()}`,
         name: 'Neues Objekt',
-        x: (lng - 8.0) * 100000, // Vereinfachte Rückkonvertierung
-        y: (lat - 47.0) * 100000,
+        x: swissCoords.x,
+        y: swissCoords.y,
+        lat: lat,
+        lng: lng,
         category: 'META',
-        unpositioned: false
+        rotation: 0,
+        unpositioned: false,
+        symbol_id: '',
+        attributes: {}
       }
+      
       setSelectedObject(newObject)
-      showToast('Neues Objekt erstellt. Bitte Eigenschaften bearbeiten.', 'success')
+      showToast('Neues Objekt erstellt. Bitte Eigenschaften bearbeiten und speichern.', 'success')
     }
+  }
+
+  const handleRefreshData = async () => {
+    setToast({ message: 'Daten werden aktualisiert...', type: 'info' })
+    await Promise.all([loadSVGData(), loadObjects()])
+    showToast('Daten erfolgreich aktualisiert', 'success')
   }
 
   const tools = [
@@ -779,6 +1006,14 @@ export default function GeoposClient({ token }) {
 
             {/* Aktionen */}
             <div className="flex items-center gap-2">
+              <button
+                onClick={handleRefreshData}
+                className="px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200 flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Aktualisieren
+              </button>
+              
               <button
                 onClick={() => {}}
                 className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200 flex items-center gap-2"

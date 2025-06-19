@@ -257,6 +257,14 @@ function App() {
     return file.converted ? 'Bereit' : 'Warten'
   }
 
+  const handleLogout = () => {
+    console.info('Benutzer wird ausgeloggt');
+    localStorage.removeItem('token');
+    setToken(null);
+    setPage('login');
+    addMessage('Erfolgreich ausgeloggt', 'success');
+};
+
   if (page === 'login') {
     return <Login onLogin={(newToken) => {
       localStorage.setItem('token', newToken);
@@ -362,6 +370,9 @@ function App() {
               <div className="hidden sm:block text-sm text-gray-600">
                 {files.length} Dateien • {files.filter(f => f.converted).length} konvertiert
               </div>
+              <button onClick={handleLogout} className="logout-button">
+    Logout
+</button>
             </div>
           </div>
         </header>
