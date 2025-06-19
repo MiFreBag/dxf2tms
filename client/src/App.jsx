@@ -53,35 +53,39 @@ function App() {
   }
 
   const handleUpload = async (event) => {
-    const selectedFiles = Array.from(event.target.files)
-    if (selectedFiles.length === 0) return
+    const selectedFiles = Array.from(event.target.files);
+    if (selectedFiles.length === 0) return;
 
-    setUploading(true)
-    const formData = new FormData()
-    
-    selectedFiles.forEach(file => {
-      formData.append('files', file)
-    })
+    setUploading(true);
+    const formData = new FormData();
+
+    selectedFiles.forEach((file) => {
+      formData.append('files', file);
+    });
 
     try {
       const response = await fetch(`${API}/upload`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`, // Token hinzugefügt
+        },
         body: formData,
-      })
+      });
 
       if (response.ok) {
-        const result = await response.json()
-        addMessage(`${selectedFiles.length} Datei(en) erfolgreich hochgeladen`, 'success')
-        await fetchFiles()
+        const result = await response.json();
+        console.log('Upload result:', result); // Verwendung hinzugefügt
+        addMessage(`${selectedFiles.length} Datei(en) erfolgreich hochgeladen`, 'success');
+        await fetchFiles();
       } else {
-        throw new Error('Upload failed')
+        throw new Error('Upload failed');
       }
     } catch (error) {
-      addMessage('Fehler beim Hochladen der Dateien', 'error')
-      console.error('Upload error:', error)
+      addMessage('Fehler beim Hochladen der Dateien', 'error');
+      console.error('Upload error:', error);
     } finally {
-      setUploading(false)
-      event.target.value = ''
+      setUploading(false);
+      event.target.value = '';
     }
   }
 
@@ -311,7 +315,7 @@ function App() {
                     disabled={uploading}
                     className="hidden"
                     id="file-upload"
-                    accept=".tif,.tiff,.geotiff"
+                    accept=".tif,.tiff,.geotiff,.dxf" // DXF hinzugefügt
                   />
                   <label
                     htmlFor="file-upload"
