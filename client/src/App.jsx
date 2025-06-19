@@ -17,11 +17,12 @@ import Map from './components/Map.jsx' // Import der Map Komponente
 import ServiceTaskManager from './components/ServiceTaskManager.jsx';
 import ContainerMonitor from './components/ContainerMonitor.jsx';
 import GeoposClient from './components/geopos/geopos_client.jsx';
+import Login from './components/Login';
 
 const API = '/api'
 
 function App() {
-  const [token] = useState('');
+  const [token, setToken] = useState(localStorage.getItem('token'));
   const [files, setFiles] = useState([])
   const [uploading, setUploading] = useState(false)
   const [convertingFiles, setConvertingFiles] = useState(new Set())
@@ -233,6 +234,15 @@ function App() {
   const getStatusText = (file) => {
     if (convertingFiles.has(file.id)) return 'Konvertierung läuft...'
     return file.converted ? 'Bereit' : 'Warten'
+  }
+
+  const handleLogin = (newToken) => {
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+  };
+
+  if (!token) {
+    return <Login onLogin={handleLogin} />;
   }
 
   // Navigation items
