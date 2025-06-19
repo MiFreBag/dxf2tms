@@ -4,7 +4,7 @@ Diese Anleitung beschreibt, wie eine n8n-Instanz zusammen mit der bestehenden dx
 
 ## Docker Compose
 
-Der `docker-compose.yml` enthält bereits einen Service `n8n`. Nach dem Start steht die Weboberfläche unter `http://localhost:5678` zur Verfügung.
+Der `docker-compose.yml` enthält bereits einen Service `n8n`. In der Standardkonfiguration wird der Dienst über den Nginx‑Proxy bereitgestellt und ist anschließend unter `https://10.254.64.14/n8n/` erreichbar.
 
 ```
 docker compose up --build
