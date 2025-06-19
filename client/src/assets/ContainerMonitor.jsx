@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaDocker, FaCube, FaLayerGroup, FaNetworkWired, FaHdd, FaCodeBranch } from 'react-icons/fa';
 
-const ContainerMonitor = ({ services, onServiceUpdate }) => {
+const ContainerMonitor = ({ services }) => {
   const [containers, setContainers] = useState([]);
   const [images, setImages] = useState([]);
   const [volumes, setVolumes] = useState([]);
