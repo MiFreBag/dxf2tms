@@ -594,10 +594,10 @@ export default function App() {
     setToast({ message, type })
   }
 
-  const handleLogin = (newToken) => {
-    setToken(newToken)
-    localStorage.setItem('token', newToken)
-  }
+const handleLogin = (newToken) => {
+  setToken(newToken)
+  localStorage.setItem('token', newToken) // ✅ sonst beim Reload verloren
+}
 
   const handleLogout = () => {
     setToken(null)

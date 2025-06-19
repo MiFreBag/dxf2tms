@@ -15,6 +15,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from osgeo import gdal
 
 # Import der DXF-Konvertierungsfunktion
@@ -60,6 +61,15 @@ app = FastAPI(
     version="1.0.0",
     openapi_url="/openapi.json",
     docs_url=None,
+)
+
+# CORS middleware for development and local frontend/backend separation
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # File storage (in production use database)
@@ -374,12 +384,9 @@ async def convert_file(file_id: str, user: str = Depends(verify_token)):
         raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
 
 @app.get("/download/{file_id}")
-async def download_file(file_id: str, token: str):
+async def download_file(file_id: str, user: str = Depends(verify_token)):
     """GeoPDF Datei herunterladen"""
     try:
-        # Token verifizieren
-        jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        
         # File info überprüfen
         info = files.get(file_id)
         if not info or not info.get("converted"):
@@ -395,8 +402,6 @@ async def download_file(file_id: str, token: str):
             media_type="application/pdf"
         )
         
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
         logger.error(f"Download failed for {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Download failed")
