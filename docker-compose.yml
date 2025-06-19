@@ -36,6 +36,13 @@ services:
       - "80:80"
       - "443:443"
     volumes:
+      # Stellen Sie sicher, dass dieser Pfad relativ zum Ort ist,
+      # an dem Sie docker-compose ausführen
+      - ./nginx/ssl:/etc/ssl/private:ro # :ro macht es Read-Only, gute Praxis
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/entrypoint.sh:/entrypoint.sh:ro
+      # Die Certbot-Volumes sind für die selbstsignierte Methode nicht zwingend
+      # erforderlich, schaden aber nicht.
       - ./nginx/certbot/www:/var/www/certbot
       - ./nginx/certbot/conf:/etc/letsencrypt
     depends_on:
