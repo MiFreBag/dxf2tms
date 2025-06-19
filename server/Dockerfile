@@ -31,7 +31,7 @@ RUN mkdir -p /tmp/runtime-root && chmod 700 /tmp/runtime-root
 WORKDIR /app
 
 # Anforderungen kopieren
-COPY server/requirements.txt /app/requirements.txt
+COPY requirements.txt /app/requirements.txt
 
 # qgis-python aus requirements filtern und restliche Pakete installieren
 RUN sed '/^qgis-python==/d' requirements.txt > req_clean.txt \
@@ -39,7 +39,7 @@ RUN sed '/^qgis-python==/d' requirements.txt > req_clean.txt \
  && pip install --no-cache-dir -r req_clean.txt
 
 # App-Code kopieren und notwendige Ordner anlegen
-COPY server/ /app/
+COPY . /app/
 RUN mkdir -p uploads output uploads/nodes/static
 
 # Port und Healthcheck
