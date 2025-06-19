@@ -82,7 +82,7 @@ services:
     ports:
       - "8081:80"
     volumes:
-      - ./server/output:/data
+      - ./server/output:/data:rw
     restart: unless-stopped
     user: "1000:1000"
 
