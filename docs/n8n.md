@@ -6,6 +6,8 @@ Diese Anleitung beschreibt, wie eine n8n-Instanz zusammen mit der bestehenden dx
 
 Der `docker-compose.yml` enthält bereits einen Service `n8n`. In der Standardkonfiguration wird der Dienst über den Nginx‑Proxy bereitgestellt und ist anschließend unter `https://10.254.64.14/n8n/` erreichbar.
 
+Wichtig ist, dass die Umgebungsvariable `N8N_PATH` mit einem abschließenden Schrägstrich gesetzt wird (z.B. `N8N_PATH=/n8n/`). Ohne das `/` am Ende sucht n8n nach statischen Dateien unter `/n8nassets` und die Oberfläche lädt nicht korrekt.
+
 ```
 docker compose up --build
 ```
