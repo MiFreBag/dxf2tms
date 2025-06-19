@@ -6,9 +6,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - .server/uploads:/app/uploads
-      - .server/output:/app/output
-      - .server/templates:/app/templates
+      - .server/uploads:/app/uploads  # <-- Tippfehler hier
+      - .server/output:/app/output   # <-- Tippfehler hier
+      - .server/templates:/app/templates # <-- Tippfehler hier
     environment:
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
