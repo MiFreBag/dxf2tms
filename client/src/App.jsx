@@ -20,13 +20,19 @@ function Login({ onLogin }) {
     setError('')
 
     try {
-      // Simulate login - replace with actual API call
-      if (username === 'admin' && password === 'admin123') {
-        // Simulate token generation
-        const token = btoa(`${username}:${Date.now()}`)
-        onLogin(token)
-      } else {
+      const res = await fetch(`${API}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        onLogin(data.access_token)
+      } else if (res.status === 401) {
         setError('Ungültige Anmeldedaten')
+      } else {
+        setError('Anmeldefehler aufgetreten')
       }
     } catch (err) {
       setError('Anmeldefehler aufgetreten')
