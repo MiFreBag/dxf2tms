@@ -117,6 +117,29 @@ function App() {
     }
   }
 
+  const handleConvertDXFToGeoPDF = async (fileId) => {
+    try {
+      const response = await fetch(`${API}/convert/${fileId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Conversion result:', result);
+        addMessage(`Datei erfolgreich konvertiert: ${result.fileName}`, 'success');
+        await fetchFiles();
+      } else {
+        throw new Error('Conversion failed');
+      }
+    } catch (error) {
+      addMessage('Fehler bei der Konvertierung der Datei', 'error');
+      console.error('Conversion error:', error);
+    }
+  };
+
   const handleBatchConvert = async () => {
     const unconvertedFiles = files.filter(f => !f.converted && !convertingFiles.has(f.id))
     
@@ -429,20 +452,14 @@ function App() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div className="flex items-center gap-2">
-                                  {!file.converted && !convertingFiles.has(file.id) && (
+                                  {!file.converted && (
                                     <button 
-                                      onClick={() => handleConvert(file)}
+                                      onClick={() => handleConvertDXFToGeoPDF(file.id)}
                                       className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
                                     >
                                       <Upload className="w-3 h-3" />
                                       Konvertieren
                                     </button>
-                                  )}
-                                  {convertingFiles.has(file.id) && (
-                                    <div className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-md">
-                                      <div className="w-3 h-3 border border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
-                                      Läuft...
-                                    </div>
                                   )}
                                   {file.converted && (
                                     <div className="flex gap-1">
@@ -467,6 +484,7 @@ function App() {
                                     className="inline-flex items-center gap-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
                                   >
                                     <Trash2 className="w-3 h-3" />
+                                    Löschen
                                   </button>
                                 </div>
                               </td>
