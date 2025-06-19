@@ -2,11 +2,114 @@ import { useState, useEffect, useRef } from 'react'
 import { 
   Upload, FileText, Download, MapPin, LogOut, CheckCircle, Clock, AlertCircle, 
   X, Plus, Layers, Navigation, ZoomIn, ZoomOut, Menu, Home, Map, File,
-  Trash2, Eye, RotateCcw, Activity, Wifi, Bell, Settings
+  Trash2, Eye, RotateCcw, Activity, Wifi, Bell, Settings, Lock
 } from 'lucide-react'
-import Login from './components/Login'
 
 const API = '/api'
+
+// Login Component
+function Login({ onLogin }) {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      // Simulate login - replace with actual API call
+      if (username === 'admin' && password === 'admin123') {
+        // Simulate token generation
+        const token = btoa(`${username}:${Date.now()}`)
+        onLogin(token)
+      } else {
+        setError('Ungültige Anmeldedaten')
+      }
+    } catch (err) {
+      setError('Anmeldefehler aufgetreten')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 p-8">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl mx-auto flex items-center justify-center mb-4">
+              <Lock className="w-10 h-10 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Stadt Zürich DAV</h1>
+            <p className="text-gray-600">DXF2GeoPDF Converter</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Benutzername
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 focus:outline-none transition-all"
+                placeholder="admin"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Passwort
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 focus:outline-none transition-all"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-2xl text-sm">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-2xl transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Anmelden...</span>
+                </>
+              ) : (
+                <span>Anmelden</span>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center text-sm text-gray-500">
+            Demo: admin / admin123
+          </div>
+        </div>
+
+        <div className="mt-8 text-center text-sm text-gray-500">
+          © 2025 Stadt Zürich DAV. Alle Rechte vorbehalten.
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // Enhanced Toast notification component
 function Toast({ message, type, onClose }) {
@@ -473,7 +576,7 @@ function MapComponent({ token }) {
 }
 
 // Main App Component
-function App() {
+export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'))
   const [page, setPage] = useState('upload')
   const [files, setFiles] = useState([])
@@ -547,4 +650,177 @@ function App() {
     
     try {
       const response = await fetch(`${API}/convert/${fileId}`, {
-        method: 'POST
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (response.ok) {
+        showToast('Konvertierung erfolgreich abgeschlossen', 'success')
+        fetchFiles()
+      } else {
+        throw new Error('Conversion failed')
+      }
+    } catch (error) {
+      console.error('Conversion error:', error)
+      showToast('Fehler bei der Konvertierung', 'error')
+    } finally {
+      setConvertingFiles(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(fileId)
+        return newSet
+      })
+    }
+  }
+
+  const handleDownload = async (file) => {
+    try {
+      const response = await fetch(`${API}/download/${file.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${file.filename.replace('.dxf', '')}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        showToast('Download gestartet', 'success')
+      }
+    } catch (error) {
+      console.error('Download error:', error)
+      showToast('Fehler beim Download', 'error')
+    }
+  }
+
+  const handlePreview = (file) => {
+    showToast('Vorschau wird geöffnet...', 'info')
+    setPage('map')
+  }
+
+  const handleDelete = async (fileId) => {
+    if (!confirm('Möchten Sie diese Datei wirklich löschen?')) return
+    
+    try {
+      const response = await fetch(`${API}/files/${fileId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (response.ok) {
+        setFiles(prev => prev.filter(f => f.id !== fileId))
+        showToast('Datei erfolgreich gelöscht', 'success')
+      } else {
+        throw new Error('Delete failed')
+      }
+    } catch (error) {
+      console.error('Delete error:', error)
+      showToast('Fehler beim Löschen der Datei', 'error')
+    }
+  }
+
+  // Generate demo files
+  useEffect(() => {
+    if (token && files.length === 0) {
+      // Simulate some demo files
+      const demoFiles = [
+        {
+          id: '1',
+          filename: 'Gebäudeplan_A1.dxf',
+          uploadedAt: new Date(Date.now() - 86400000).toISOString(),
+          converted: true
+        },
+        {
+          id: '2',
+          filename: 'Leitungsplan_2024.dxf',
+          uploadedAt: new Date(Date.now() - 3600000).toISOString(),
+          converted: false
+        }
+      ]
+      setFiles(demoFiles)
+    }
+  }, [token])
+
+  useEffect(() => {
+    if (token) {
+      fetchFiles()
+    }
+  }, [token])
+
+  if (!token) {
+    return <Login onLogin={handleLogin} />
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+      {/* Background Pattern */}
+      <div className="fixed inset-0 opacity-30">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(56,189,248,0.1),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_75%,rgba(14,165,233,0.1),transparent_50%)]"></div>
+      </div>
+
+      <div className="relative z-10 flex h-screen">
+        <Sidebar page={page} setPage={setPage} onLogout={handleLogout} />
+        
+        <main className="flex-1 overflow-auto">
+          <div className="p-8 h-full">
+            {page === 'upload' && (
+              <div className="space-y-8 h-full">
+                {/* Header */}
+                <div className="text-center">
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4">
+                    DXF zu GeoPDF Konverter
+                  </h1>
+                  <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Laden Sie Ihre DXF-Dateien hoch und konvertieren Sie sie zu hochwertigen GeoPDF-Dokumenten
+                  </p>
+                </div>
+
+                {/* Upload Section */}
+                <div className="max-w-4xl mx-auto">
+                  <FileUpload onFileUpload={handleFileUpload} uploading={uploading} />
+                </div>
+
+                {/* Files List */}
+                <div className="max-w-6xl mx-auto">
+                  <FileList 
+                    files={files}
+                    onConvert={handleConvert}
+                    onDownload={handleDownload}
+                    onPreview={handlePreview}
+                    onDelete={handleDelete}
+                    convertingFiles={convertingFiles}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {page === 'map' && (
+              <div className="h-full">
+                <div className="mb-6">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">Kartenansicht</h1>
+                  <p className="text-gray-600">Visualisieren Sie Ihre konvertierten TMS-Layer auf der interaktiven Karte</p>
+                </div>
+                <div className="h-[calc(100%-120px)]">
+                  <MapComponent token={token} />
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+    </div>
+  )
+}
