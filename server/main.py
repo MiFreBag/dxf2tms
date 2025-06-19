@@ -436,6 +436,16 @@ async def get_container_status(user: str = Depends(verify_token)):
         logger.error(f"Fehler beim Abrufen des Container-Status: {e}")
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen des Container-Status")
 
+@app.get("/openapi.json", include_in_schema=False)
+def get_openapi_json():
+    """OpenAPI-Schema bereitstellen"""
+    return app.openapi()
+
+@app.get("/docs", include_in_schema=False)
+def get_docs():
+    """Swagger UI bereitstellen"""
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="DXF to GeoPDF API Docs")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
