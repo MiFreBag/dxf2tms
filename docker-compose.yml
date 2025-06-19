@@ -56,7 +56,8 @@ services:
       - "5678:5678"
     environment:
       - N8N_BASIC_AUTH_ACTIVE=false
-      - WEBHOOK_URL=http://localhost:5678
+      - N8N_SECURE_COOKIE=fasle
+      - WEBHOOK_URL=http://10.254.64.14:5678
     volumes:
       - n8n_data:/home/node/.n8n
     restart: always
