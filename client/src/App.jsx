@@ -1,350 +1,497 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { 
-  Upload, FileText, Download, MapPin, LogOut, CheckCircle, Clock, AlertCircle, 
-  X, Plus, Layers, Navigation, ZoomIn, ZoomOut, Menu, Home, Map, File,
-  Trash2, Eye, RotateCcw, Activity, Wifi, Bell, Settings, Lock
+  Upload, 
+  FileText, 
+  CheckCircle, 
+  AlertCircle, 
+  Clock, 
+  Download, 
+  Trash2, 
+  MapPin,
+  Navigation,
+  Layers,
+  Menu,
+  X
 } from 'lucide-react'
+import Map from './Map.jsx' // Import der Map Komponente
 
-const API = '' // Remove '/api' prefix for compatibility with backend
+const API = '/api'
 
-// ... alle Komponenten (Login, Toast, FileUpload, Sidebar) bleiben unverändert ...
-
-// File List Component – angepasst: filename → name, uploadedAt → uploaded_at
-function FileList({ files, onConvert, onDownload, onPreview, onDelete, convertingFiles }) {
-  const getStatusBadge = (file) => {
-    if (convertingFiles.has(file.id)) {
-      return (
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-800 text-sm rounded-full">
-          <div className="w-3 h-3 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="font-medium">Konvertiert...</span>
-        </div>
-      )
-    }
-    
-    if (file.converted) {
-      return (
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-100 text-emerald-800 text-sm rounded-full">
-          <CheckCircle className="w-3 h-3" />
-          <span className="font-medium">Fertig</span>
-        </div>
-      )
-    }
-    
-    return (
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-600 text-sm rounded-full">
-        <Clock className="w-3 h-3" />
-        <span className="font-medium">Bereit</span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-gray-200/50 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200/50">
-        <h3 className="text-lg font-semibold text-gray-800">Hochgeladene Dateien</h3>
-        <p className="text-sm text-gray-500 mt-1">{files.length} Datei(en) verfügbar</p>
-      </div>
-      
-      <div className="divide-y divide-gray-200/50">
-        {files.map(file => (
-          <div key={file.id} className="px-6 py-4 hover:bg-gray-50/50 transition-colors">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">{file.name}</h4>
-                  <p className="text-sm text-gray-500">
-                    Hochgeladen: {new Date(file.uploaded_at).toLocaleString('de-DE')}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                {getStatusBadge(file)}
-                
-                <div className="flex gap-2">
-                  {!file.converted && !convertingFiles.has(file.id) && (
-                    <button
-                      onClick={() => onConvert(file.id)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-sm rounded-xl transition-all duration-200 hover:scale-105"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      <span>Konvertieren</span>
-                    </button>
-                  )}
-                  
-                  {file.converted && (
-                    <>
-                      <button
-                        onClick={() => onPreview(file)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm rounded-xl transition-all duration-200 hover:scale-105"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>Vorschau</span>
-                      </button>
-                      <button
-                        onClick={() => onDownload(file)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-xl transition-all duration-200 hover:scale-105"
-                      >
-                        <Download className="w-4 h-4" />
-                        <span>Download</span>
-                      </button>
-                    </>
-                  )}
-                  
-                  <button
-                    onClick={() => onDelete(file.id)}
-                    className="inline-flex items-center gap-2 px-3 py-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-        
-        {files.length === 0 && (
-          <div className="px-6 py-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl mx-auto flex items-center justify-center mb-4">
-              <FileText className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-500 mb-2">Keine Dateien vorhanden</h3>
-            <p className="text-gray-400">Laden Sie Ihre erste DXF-Datei hoch, um zu beginnen</p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ... MapComponent bleibt unverändert ...
-
-export default function App() {
-  const [token, setToken] = useState(localStorage.getItem('token'))
-  const [page, setPage] = useState('upload')
+function App() {
+  const [token, setToken] = useState('')
   const [files, setFiles] = useState([])
   const [uploading, setUploading] = useState(false)
   const [convertingFiles, setConvertingFiles] = useState(new Set())
-  const [toast, setToast] = useState(null)
+  const [selectedFiles, setSelectedFiles] = useState([])
+  const [messages, setMessages] = useState([])
+  const [page, setPage] = useState('upload')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const showToast = (message, type = 'info') => {
-    setToast({ message, type })
-  }
-
-  const handleLogin = (newToken) => {
-    setToken(newToken)
-    localStorage.setItem('token', newToken)
-  }
-
-  const handleLogout = () => {
-    setToken(null)
-    localStorage.removeItem('token')
-    setFiles([])
-    setPage('upload')
-  }
+  // Fetch initial data
+  useEffect(() => {
+    fetchFiles()
+  }, [])
 
   const fetchFiles = async () => {
-    if (!token) return
-    
     try {
-      const response = await fetch(`${API}/files`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
+      const response = await fetch(`${API}/files`)
       if (response.ok) {
         const data = await response.json()
         setFiles(data)
       }
     } catch (error) {
-      console.error('Failed to fetch files:', error)
-      showToast('Fehler beim Laden der Dateien', 'error')
+      console.error('Error fetching files:', error)
     }
   }
 
-  const handleFileUpload = async (file) => {
+  const addMessage = (text, type = 'info') => {
+    const id = Date.now()
+    setMessages(prev => [...prev, { id, text, type }])
+    setTimeout(() => {
+      setMessages(prev => prev.filter(msg => msg.id !== id))
+    }, 5000)
+  }
+
+  const handleUpload = async (event) => {
+    const selectedFiles = Array.from(event.target.files)
+    if (selectedFiles.length === 0) return
+
     setUploading(true)
+    const formData = new FormData()
     
+    selectedFiles.forEach(file => {
+      formData.append('files', file)
+    })
+
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      
       const response = await fetch(`${API}/upload`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
+        body: formData,
       })
-      
+
       if (response.ok) {
-        showToast('Datei erfolgreich hochgeladen', 'success')
-        fetchFiles()
+        const result = await response.json()
+        addMessage(`${selectedFiles.length} Datei(en) erfolgreich hochgeladen`, 'success')
+        await fetchFiles()
       } else {
         throw new Error('Upload failed')
       }
     } catch (error) {
+      addMessage('Fehler beim Hochladen der Dateien', 'error')
       console.error('Upload error:', error)
-      showToast('Fehler beim Hochladen der Datei', 'error')
     } finally {
       setUploading(false)
+      event.target.value = ''
     }
   }
 
-  const handleConvert = async (fileId) => {
-    setConvertingFiles(prev => new Set([...prev, fileId]))
+  const handleConvert = async (file) => {
+    if (convertingFiles.has(file.id)) return
+
+    setConvertingFiles(prev => new Set([...prev, file.id]))
     
     try {
-      const response = await fetch(`${API}/convert/${fileId}`, {
+      const response = await fetch(`${API}/convert/${file.id}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
       })
       
       if (response.ok) {
-        showToast('Konvertierung erfolgreich abgeschlossen', 'success')
-        fetchFiles()
+        addMessage(`${file.name} erfolgreich konvertiert`, 'success')
+        await fetchFiles()
       } else {
         throw new Error('Conversion failed')
       }
     } catch (error) {
+      addMessage(`Fehler bei der Konvertierung von ${file.name}`, 'error')
       console.error('Conversion error:', error)
-      showToast('Fehler bei der Konvertierung', 'error')
     } finally {
       setConvertingFiles(prev => {
         const newSet = new Set(prev)
-        newSet.delete(fileId)
+        newSet.delete(file.id)
         return newSet
       })
     }
   }
 
-  const handleDownload = async (file) => {
-    try {
-      const response = await fetch(`${API}/download/${file.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${file.name.replace('.dxf', '')}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        showToast('Download gestartet', 'success')
-      }
-    } catch (error) {
-      console.error('Download error:', error)
-      showToast('Fehler beim Download', 'error')
+  const handleBatchConvert = async () => {
+    const unconvertedFiles = files.filter(f => !f.converted && !convertingFiles.has(f.id))
+    
+    for (const file of unconvertedFiles) {
+      await handleConvert(file)
     }
   }
 
-  const handlePreview = (file) => {
-    showToast('Vorschau wird geöffnet...', 'info')
-    setPage('map')
-  }
-
   const handleDelete = async (fileId) => {
-    if (!confirm('Möchten Sie diese Datei wirklich löschen?')) return
-    
     try {
       const response = await fetch(`${API}/files/${fileId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
       })
       
       if (response.ok) {
-        setFiles(prev => prev.filter(f => f.id !== fileId))
-        showToast('Datei erfolgreich gelöscht', 'success')
+        addMessage('Datei erfolgreich gelöscht', 'success')
+        await fetchFiles()
+        setSelectedFiles(prev => prev.filter(id => id !== fileId))
       } else {
         throw new Error('Delete failed')
       }
     } catch (error) {
+      addMessage('Fehler beim Löschen der Datei', 'error')
       console.error('Delete error:', error)
-      showToast('Fehler beim Löschen der Datei', 'error')
     }
   }
 
-  useEffect(() => {
-    if (token) {
-      fetchFiles()
+  const handlePreview = (file) => {
+    if (file.converted && file.previewUrl) {
+      window.open(file.previewUrl, '_blank')
+    } else {
+      addMessage('Keine Vorschau verfügbar', 'warning')
     }
-  }, [token])
-
-  if (!token) {
-    return <Login onLogin={handleLogin} />
   }
+
+  const handleDownload = (file) => {
+    if (file.converted && file.downloadUrl) {
+      const link = document.createElement('a')
+      link.href = file.downloadUrl
+      link.download = file.name.replace(/\.[^/.]+$/, '') + '_converted.tms'
+      link.click()
+      addMessage('Download gestartet', 'success')
+    }
+  }
+
+  const handleSelectFile = (fileId) => {
+    setSelectedFiles(prev => 
+      prev.includes(fileId) 
+        ? prev.filter(id => id !== fileId)
+        : [...prev, fileId]
+    )
+  }
+
+  const handleSelectAll = () => {
+    const convertedFileIds = files.filter(f => f.converted).map(f => f.id)
+    setSelectedFiles(
+      selectedFiles.length === convertedFileIds.length ? [] : convertedFileIds
+    )
+  }
+
+  const getStatusIcon = (file) => {
+    if (convertingFiles.has(file.id)) {
+      return <Clock className="w-4 h-4 text-yellow-500 animate-pulse" />
+    }
+    return file.converted ? 
+      <CheckCircle className="w-4 h-4 text-green-500" /> : 
+      <AlertCircle className="w-4 h-4 text-gray-400" />
+  }
+
+  const getStatusText = (file) => {
+    if (convertingFiles.has(file.id)) return 'Konvertierung läuft...'
+    return file.converted ? 'Bereit' : 'Warten'
+  }
+
+  // Navigation items
+  const navItems = [
+    { id: 'upload', label: 'Upload & Convert', icon: Upload },
+    { id: 'map', label: 'Kartenansicht', icon: MapPin },
+  ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
-      {/* Background Pattern */}
-      <div className="fixed inset-0 opacity-30">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(56,189,248,0.1),transparent_50%)]"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_75%,rgba(14,165,233,0.1),transparent_50%)]"></div>
-      </div>
-
-      <div className="relative z-10 flex h-screen">
-        <Sidebar page={page} setPage={setPage} onLogout={handleLogout} />
-        
-        <main className="flex-1 overflow-auto">
-          <div className="p-8 h-full">
-            {page === 'upload' && (
-              <div className="space-y-8 h-full">
-                {/* Header */}
-                <div className="text-center">
-                  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4">
-                    DXF zu GeoPDF Konverter
-                  </h1>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                    Laden Sie Ihre DXF-Dateien hoch und konvertieren Sie sie zu hochwertigen GeoPDF-Dokumenten
-                  </p>
-                </div>
-
-                {/* Upload Section */}
-                <div className="max-w-4xl mx-auto">
-                  <FileUpload onFileUpload={handleFileUpload} uploading={uploading} />
-                </div>
-
-                {/* Files List */}
-                <div className="max-w-6xl mx-auto">
-                  <FileList 
-                    files={files}
-                    onConvert={handleConvert}
-                    onDownload={handleDownload}
-                    onPreview={handlePreview}
-                    onDelete={handleDelete}
-                    convertingFiles={convertingFiles}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {page === 'map' && (
-              <div className="h-full">
-                <div className="mb-6">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">Kartenansicht</h1>
-                  <p className="text-gray-600">Visualisieren Sie Ihre konvertierten TMS-Layer auf der interaktiven Karte</p>
-                </div>
-                <div className="h-[calc(100%-120px)]">
-                  <MapComponent token={token} />
-                </div>
-              </div>
-            )}
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Messages */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {messages.map(msg => (
+          <div
+            key={msg.id}
+            className={`px-4 py-2 rounded-lg shadow-lg text-white max-w-sm ${
+              msg.type === 'success' ? 'bg-green-500' :
+              msg.type === 'error' ? 'bg-red-500' :
+              msg.type === 'warning' ? 'bg-yellow-500' :
+              'bg-blue-500'
+            }`}
+          >
+            {msg.text}
           </div>
-        </main>
+        ))}
       </div>
 
-      {/* Toast Notification */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed lg:static inset-y-0 left-0 z-50 
+        w-64 bg-white border-r border-gray-200 
+        transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+        lg:translate-x-0 transition-transform duration-300 ease-in-out
+      `}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h1 className="text-xl font-bold text-gray-900">TMS Converter</h1>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1 text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <nav className="p-4">
+          <ul className="space-y-2">
+            {navItems.map(item => {
+              const Icon = item.icon
+              return (
+                <li key={item.id}>
+                  <button
+                    onClick={() => {
+                      setPage(item.id)
+                      setSidebarOpen(false)
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      page === item.id
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {item.label}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <header className="bg-white border-b border-gray-200 px-4 py-3 lg:px-6">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-1 text-gray-500 hover:text-gray-700"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:block text-sm text-gray-600">
+                {files.length} Dateien • {files.filter(f => f.converted).length} konvertiert
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+          {page === 'upload' && (
+            <div>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Upload & Convert</h2>
+                <p className="text-gray-600">Lade deine Dateien hoch und konvertiere sie zu TMS-Layern</p>
+              </div>
+
+              {/* Upload area */}
+              <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Dateien hochladen
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Ziehe Dateien hierher oder klicke zum Auswählen
+                  </p>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleUpload}
+                    disabled={uploading}
+                    className="hidden"
+                    id="file-upload"
+                    accept=".tif,.tiff,.geotiff"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium cursor-pointer transition-colors ${
+                      uploading
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {uploading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        Wird hochgeladen...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Dateien auswählen
+                      </>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {/* File list */}
+              <div className="bg-white rounded-lg shadow-sm border">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-gray-900">Dateiliste</h3>
+                    {files.length > 0 && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleBatchConvert}
+                          disabled={files.filter(f => !f.converted).length === 0}
+                          className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-sm rounded-lg transition-colors"
+                        >
+                          Alle konvertieren
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {files.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    Noch keine Dateien hochgeladen
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <input
+                                type="checkbox"
+                                checked={selectedFiles.length === files.filter(f => f.converted).length && files.filter(f => f.converted).length > 0}
+                                onChange={handleSelectAll}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Datei
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Größe
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Aktionen
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {files.map((file) => (
+                            <tr key={file.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedFiles.includes(file.id)}
+                                  onChange={() => handleSelectFile(file.id)}
+                                  disabled={!file.converted}
+                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-3">
+                                  <FileText className="w-5 h-5 text-gray-400" />
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {file.name}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                      {new Date(file.uploadedAt).toLocaleString('de-DE')}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  {getStatusIcon(file)}
+                                  <span className="text-sm text-gray-600">
+                                    {getStatusText(file)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {(file.size / (1024 * 1024)).toFixed(1)} MB
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex items-center gap-2">
+                                  {!file.converted && !convertingFiles.has(file.id) && (
+                                    <button 
+                                      onClick={() => handleConvert(file)}
+                                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+                                    >
+                                      <Upload className="w-3 h-3" />
+                                      Konvertieren
+                                    </button>
+                                  )}
+                                  {convertingFiles.has(file.id) && (
+                                    <div className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-md">
+                                      <div className="w-3 h-3 border border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
+                                      Läuft...
+                                    </div>
+                                  )}
+                                  {file.converted && (
+                                    <div className="flex gap-1">
+                                      <button 
+                                        onClick={() => handlePreview(file)}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+                                      >
+                                        <FileText className="w-3 h-3" />
+                                        Vorschau
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDownload(file)}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
+                                      >
+                                        <Download className="w-3 h-3" />
+                                        Download
+                                      </button>
+                                    </div>
+                                  )}
+                                  <button 
+                                    onClick={() => handleDelete(file.id)}
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {page === 'map' && (
+            <div className="h-full">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Kartenansicht</h2>
+                <p className="text-gray-600">Konvertierte TMS-Layer auf der Karte anzeigen</p>
+              </div>
+              {/* Verwendung der Map.jsx Komponente */}
+              <div className="h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border overflow-hidden">
+                <Map />
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   )
 }
+
+export default App
