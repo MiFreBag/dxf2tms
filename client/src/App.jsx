@@ -77,49 +77,48 @@ function App() {
   }
 
   const handleUpload = async (event) => {
-      const selectedFiles = Array.from(event.target.files);
-      if (selectedFiles.length === 0) return;
+    try {
+        setUploading(true);
+        const files = event.target.files;
+        const formData = new FormData();
 
-      setUploading(true);
-      const formData = new FormData();
+        for (const file of files) {
+            formData.append('file', file);
+            console.debug(`Hochzuladende Datei: ${file.name}, Größe: ${file.size} Bytes`);
+        }
 
-      selectedFiles.forEach((file) => {
-        formData.append('files', file);
-      });
-
-      try {
         const response = await fetch(`${API}/upload`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          body: formData,
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+            body: formData,
         });
 
         if (response.ok) {
-          const result = await response.json();
-          console.log('Upload result:', result);
-          addMessage(`${selectedFiles.length} Datei(en) erfolgreich hochgeladen`, 'success');
-          await fetchFiles();
+            const result = await response.json();
+            console.info('Upload erfolgreich:', result);
+            addMessage(`${files.length} Datei(en) erfolgreich hochgeladen`, 'success');
+            await fetchFiles();
         } else if (response.status === 422) {
-          addMessage('Fehlerhafte Daten: Bitte überprüfen Sie die hochgeladenen Dateien.', 'error');
-          console.error('Upload error: Unprocessable Entity');
+            console.error('Upload-Fehler: Unprocessable Entity');
+            addMessage('Fehlerhafte Daten: Bitte überprüfen Sie die hochgeladenen Dateien.', 'error');
         } else if (response.status === 403) {
-          addMessage('Authentifizierungsfehler: Bitte melden Sie sich erneut an.', 'error');
-          console.error('Upload error: Forbidden');
-          localStorage.removeItem('token');
-          window.location.href = '/login';
+            console.error('Upload-Fehler: Forbidden');
+            addMessage('Authentifizierungsfehler: Bitte melden Sie sich erneut an.', 'error');
+            localStorage.removeItem('token');
+            window.location.href = '/login';
         } else {
-          throw new Error('Upload failed');
+            throw new Error('Upload fehlgeschlagen');
         }
-      } catch (error) {
+    } catch (error) {
+        console.error('Fehler beim Hochladen der Dateien:', error);
         addMessage('Fehler beim Hochladen der Dateien', 'error');
-        console.error('Upload error:', error);
-      } finally {
+    } finally {
         setUploading(false);
         event.target.value = '';
-      }
-    };
+    }
+};
 
   const handleConvert = async (file) => {
     if (convertingFiles.has(file.id)) return

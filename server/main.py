@@ -300,6 +300,7 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
 
         # Datei speichern
         content = await file.read()
+        logger.debug(f"Dateigröße: {len(content)} Bytes")
         with open(dxf_path, "wb") as f:
             f.write(content)
 
