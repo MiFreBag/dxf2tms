@@ -191,6 +191,7 @@ function App() {
   const navItems = [
     { id: 'upload', label: 'Upload & Convert', icon: Upload },
     { id: 'map', label: 'Kartenansicht', icon: MapPin },
+    { id: 'n8n', label: 'n8n Workflow', icon: Layers },
   ]
 
   return (
@@ -485,6 +486,18 @@ function App() {
               {/* Verwendung der Map.jsx Komponente */}
               <div className="h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border overflow-hidden">
                 <Map />
+              </div>
+            </div>
+          )}
+
+          {page === 'n8n' && (
+            <div className="h-full">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">n8n Workflow</h2>
+                <p className="text-gray-600">Interaktive Workflows anzeigen</p>
+              </div>
+              <div className="h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border overflow-hidden">
+                <iframe src="/n8n/" className="w-full h-full border-none"></iframe>
               </div>
             </div>
           )}
