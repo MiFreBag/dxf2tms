@@ -5,13 +5,13 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Nur die Lockfiles kopieren (aus dem client-Verzeichnis!)
-COPY client/package.json client/package-lock.json ./
+COPY package.json package-lock.json ./
 
 # Dependencies sauber installieren
 RUN npm ci
 
 # Rest des Quellcodes aus dem client-Verzeichnis
-COPY client/. .
+COPY . .
 
 # Produktion-Build
 RUN npm run build
