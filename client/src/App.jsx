@@ -33,8 +33,12 @@ function App() {
 
   // Fetch initial data
   useEffect(() => {
-    fetchFiles()
-  }, [])
+    if (!token) {
+      window.location.href = '/login';
+    } else {
+      fetchFiles();
+    }
+  }, [token])
 
   const fetchFiles = async () => {
     try {
