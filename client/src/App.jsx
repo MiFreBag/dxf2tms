@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   Upload, 
   FileText, 
@@ -32,25 +32,41 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Fetch initial data
-  useEffect(() => {
-    if (!token) {
-      setPage('login');
-    } else {
-      fetchFiles();
-    }
-  }, [token])
-
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     try {
-      const response = await fetch(`${API}/files`)
+      const response = await fetch(`${API}/files`, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+        },
+      });
+
       if (response.ok) {
         const data = await response.json()
         setFiles(data)
+      } else if (response.status === 403) {
+        console.error('Token abgelaufen');
+        handleTokenExpiration();
+      } else {
+        throw new Error('Fehler beim Abrufen der Dateien');
       }
     } catch (error) {
-      console.error('Error fetching files:', error)
+      console.error('Fehler beim Abrufen der Dateien:', error);
     }
-  }
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+        setPage('login');
+    } else {
+        fetchFiles();
+    }
+  }, [token, fetchFiles]);
+
+  const handleTokenExpiration = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setPage('login');
+};
 
   const addMessage = (text, type = 'info') => {
     const id = Date.now()
