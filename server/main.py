@@ -17,6 +17,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from osgeo import gdal
+from docker import from_env
 
 # Import der DXF-Konvertierungsfunktion
 from convert_dxf_to_geopdf import dxf_to_geopdf
@@ -410,6 +411,27 @@ async def delete_file(file_id: str, user: str = Depends(verify_token)):
     except Exception as e:
         logger.error(f"Delete failed for {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Delete failed")
+
+@app.get("/containers")
+async def get_container_status(user: str = Depends(verify_token)):
+    """Status der laufenden Docker-Container abrufen"""
+    try:
+        client = from_env()
+        containers = []
+
+        for container in client.containers.list():
+            containers.append({
+                "id": container.id,
+                "name": container.name,
+                "status": container.status,
+                "image": container.image.tags,
+                "created": container.attrs['Created']
+            })
+
+        return {"containers": containers}
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen des Container-Status: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Abrufen des Container-Status")
 
 if __name__ == "__main__":
     import uvicorn

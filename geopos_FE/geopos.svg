@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<svg xmlns:geopos="geopos"  id="mapknoten" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" baseProfile="full" contentStyleType="text/css" preserveAspectRatio="xMidYMid meet" style="" version="1.1">
+
+    <defs id="PROJECT">
+		<pattern height="1" id="schraffiert1" patternUnits="userSpaceOnUse" width="1" x="0" y="0">
+			<g style="stroke:#2E79D6; stroke-width:0.1;stroke-opacity : 0.5">
+				<path d="M0,0 l1,1"/>
+				<path d="M1,0 l-1,1"/>
+			</g>
+		</pattern>
+    	<pattern height="1" id="schraffiert2" patternUnits="userSpaceOnUse" width="1" x="0" y="0">
+    		<g style="stroke:black; stroke-width:0.1;stroke-opacity : 0.5">
+    			<path d="M0,0 l1,1"/>
+    			<path d="M1,0 l-1,1"/>
+    		</g>
+    	</pattern>
+    	<pattern height="1" id="schraffiert3" patternUnits="userSpaceOnUse" width="1" x="0" y="0">
+    		<g style="stroke:#D6792E; stroke-width:0.1;stroke-opacity : 0.5">
+    			<path d="M0,0 l1,1"/>
+    			<path d="M1,0 l-1,1"/>
+    		</g>
+    	</pattern>
+
+    	<pattern height="4" id="schraffiert13" patternUnits="userSpaceOnUse" width="4" x="0" y="0">
+    		<g style="stroke:#FFFFFF; stroke-width:0.4;stroke-opacity : 1; stroke-linecap:square">
+    			<path d="M1,0 l-1,1"/>
+    			<path d="M3,0 l-3,3"/>
+    			<path d="M4,1 l-3,3"/>
+    			<path d="M4,3 l-1,1"/>
+    		</g>
+    	</pattern>
+    	<pattern height="4" id="schraffiert14" patternUnits="userSpaceOnUse" width="4" x="0" y="0">
+    		<g style="stroke:#2A4B9B; stroke-width:0.4;stroke-opacity : 1; stroke-linecap:square">
+    			<path d="M1,0 l-1,1"/>
+    			<path d="M3,0 l-3,3"/>
+    			<path d="M4,1 l-3,3"/>
+    			<path d="M4,3 l-1,1"/>
+    		</g>
+    	</pattern>
+    	<pattern height="4" id="schraffiert15" patternUnits="userSpaceOnUse" width="4" x="0" y="0">
+    		<g style="stroke:#E52420; stroke-width:0.4;stroke-opacity : 1; stroke-linecap:square">
+    			<path d="M1,0 l-1,1"/>
+    			<path d="M3,0 l-3,3"/>
+    			<path d="M4,1 l-3,3"/>
+    			<path d="M4,3 l-1,1"/>
+    		</g>
+    	</pattern>
+		<marker id="markerCircle" markerHeight="7" markerWidth="7" orient="auto" refx="3" refy="3">
+      		<circle cx="1.5" cy="1.5" r="3" style="stroke: none; fill:#000000;"/>
+  		</marker>
+		<marker id="markerArrow" markerHeight="13" markerWidth="13" orient="auto" refx="2" refy="6">
+    		<path d="M2,2 L2,11 L10,6 L2,2" style="fill: #000000;"/>
+		</marker>
+	</defs>
+
+	<defs id="DEFS"></defs>
+
+	<style id="PROJECT">
+		
+		.shape1
+		{
+			fill:url(#schraffiert1);
+			stroke-width:0.2;
+			stroke:#2E79D6
+		}
+		.shape2
+		{
+			fill:url(#schraffiert2);
+			stroke-width:0.2;
+			stroke:#000000
+		}
+		.shape3
+		{
+			fill:url(#schraffiert3);
+			stroke-width:0.2;
+			stroke:#D6792E
+		}
+
+		.shape4
+		{
+			fill:none;
+			stroke-width:0.4;
+			stroke:#2E79D6
+		}
+		.shape5
+		{
+			fill:none;
+			stroke-width:0.4;
+			stroke:#000000
+		}
+		.shape6
+		{
+			fill:none;
+			stroke-width:0.4;
+			stroke:#D6792E
+		}
+
+		.shape10
+		{
+			fill:#FFFFFF;
+			stroke-width:0.4;
+			stroke:#FFFFFF
+		}
+		.shape11
+		{
+			fill:#2A4B9B;
+			stroke-width:0.4;
+			stroke:#2A4B9B
+		}
+		.shape12
+		{
+			fill:#E52420;
+			stroke-width:0.4;
+			stroke:#E52420
+		}
+
+		.shape13
+		{
+			fill:url(#schraffiert13);
+			stroke-width:0.2;
+			stroke:#FFFFFF
+		}
+		.shape14
+		{
+			fill:url(#schraffiert14);
+			stroke-width:0.2;
+			stroke:#2A4B9B
+		}
+		.shape15
+		{
+			fill:url(#schraffiert15);
+			stroke-width:0.2;
+			stroke:#E52420
+		}
+
+
+		.text1
+		{
+			font-size: 1.2px; 
+			font-family: "Arial", Arial, Arial, sans-serif;
+			fill : #000;
+		}
+		
+		.text2
+		{
+			font-size: 2.4px; 
+			font-family: "Arial", Arial, Arial, sans-serif;
+			fill : #000;
+		}
+
+		.text3
+		{
+			font-size: 4.8px; 
+			font-family: "Arial", Arial, Arial, sans-serif;
+			fill : #000;
+		}
+
+		.text4
+		{
+			font-size: 1.2px; 
+			font-family: "Arial", Arial, Arial, sans-serif;
+			fill : #ff0000;
+		}
+		
+		.text5
+		{
+			font-size: 2.4px; 
+			font-family: "Arial", Arial, Arial, sans-serif;
+			fill : #ff0000;
+		}
+
+		.text6
+		{
+			font-size: 4.8px; 
+			font-family: "Arial", Arial, Arial, sans-serif;
+			fill : #ff0000;
+		}
+
+
+		.arrow1
+		{
+			marker-start: url(#markerCircle);
+			marker-end: url(#markerArrow);
+			fill:none;
+			stroke-width:0.2;
+			stroke:#2E79D6
+		}
+
+		.arrow2
+		{
+			marker-start:url(#markerCircle);
+			marker-end:url(#markerArrow); 
+			fill:none;
+			stroke-width:0.2;
+			stroke:#000000
+		}
+		
+		.arrow3
+		{
+			marker-start:url(#markerCircle);
+			marker-end:url(#markerArrow); 
+			fill:none;
+			stroke-width:0.2;
+			stroke:#D6792E
+		}
+	
+   </style>
+	
+	
+	<style id="geopos_symb.css"></style>
+	
+	<image id="lageplan.png" preserveAspectRatio="none"/>
+
+    <g class="layer" id="PROJECT0" style=""/>
+	<g class="layer" id="DYNAMIC" style="display: none"/>
+   	<g class="layer" id="STATIC" style="display: none"/>
+    <g class="layer" id="PROJECT1" style=""/>
+    <g class="layer" id="PLANKOPF"/>
+
+	<text id="watermark" paint-order="stroke"></text>
+	<rect id="border" style="fill: none; stroke:black; stroke-width:0.1" x="0" y="0" width="0" height="0"></rect>
+	
+</svg>
