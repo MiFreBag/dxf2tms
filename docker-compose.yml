@@ -64,6 +64,7 @@ services:
       - N8N_EDITOR_BASE_URL=https://10.254.64.14/n8n/
       - WEBHOOK_URL=https://10.254.64.14/n8n/
       - N8N_PATH=/n8n
+      - VUE_APP_URL_BASE_API=https://10.254.64.14/n8n
     volumes:
       - n8n_data:/home/node/.n8n
     restart: always
