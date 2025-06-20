@@ -373,7 +373,7 @@ def convert_dxf_to_geopdf(dxf_path: str, pdf_path: str) -> None:
     """Legacy-Funktion für Rückwärtskompatibilität"""
     dxf_to_geopdf(dxf_path, pdf_path)
 
-def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: int = 6) -> bool:
+def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: int = 6, srs: Optional[str] = None) -> bool:
     """
     Konvertiert ein GeoPDF in einen TMS-Ordner (Tiles) mit gdal2tiles
     """
@@ -396,6 +396,8 @@ def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: i
             '-w', 'none',
             pdf_path, tms_dir
         ]
+        if srs:
+            cmd.extend(["--s_srs", srs])
         logger.info(f"Starte gdal2tiles: {' '.join(cmd)}")
         # Führe den Befehl aus und prüfe auf Fehler
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)

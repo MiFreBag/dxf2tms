@@ -557,8 +557,13 @@ async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(v
         geopdf_path = row[2] if row[2].endswith('.pdf') else os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
         if not os.path.exists(geopdf_path):
             raise HTTPException(status_code=404, detail="GeoPDF file missing on disk")
+        
+        # SRS aus der Datenbank holen (gespeichert während der Konvertierung)
+        file_srs = row[11] if len(row) > 11 else None
+        logger.info(f"Verwende SRS '{file_srs}' für TMS-Generierung von {file_id}")
+
         tms_dir = os.path.join(STATIC_ROOT, file_id)
-        convert_pdf_to_tms(geopdf_path, tms_dir, minzoom=0, maxzoom=maxzoom)
+        convert_pdf_to_tms(geopdf_path, tms_dir, minzoom=0, maxzoom=maxzoom, srs=file_srs)
         return {"message": "TMS erfolgreich erzeugt", "tms_dir": tms_dir, "url": f"/static/{file_id}"}
     except Exception as e:
         logger.error(f"TMS-Erstellung fehlgeschlagen: {e}")
