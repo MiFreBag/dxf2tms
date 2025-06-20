@@ -22,6 +22,7 @@ import sqlite3
 
 # Import der DXF-Konvertierungsfunktion
 from convert_dxf_to_geopdf import dxf_to_geopdf, convert_pdf_to_tms
+from .convert_raster_to_geopdf import raster_to_geopdf
 
 # Logging konfigurieren
 logging.basicConfig(level=logging.INFO)
@@ -454,7 +455,7 @@ async def convert_file(
     page_size: str = "A4",
     dpi: int = 300
 ):
-    """DXF zu GeoPDF konvertieren und Metadaten speichern (mit Parametern)"""
+    """DXF oder Raster zu GeoPDF konvertieren und Metadaten speichern (mit Parametern)"""
     try:
         with conn:
             cursor = conn.cursor()
@@ -465,18 +466,25 @@ async def convert_file(
             row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
-        dxf_path = row[2]
+        input_path = row[2]
+        ext = os.path.splitext(input_path)[1].lower()
         geopdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
         try:
             bbox, layer_info, srs = None, None, None
-            try:
-                result = dxf_to_geopdf(dxf_path, geopdf_path, page_size=page_size, dpi=dpi, return_metadata=True)
-                if isinstance(result, dict):
-                    bbox = result.get('bbox')
-                    layer_info = result.get('layer_info')
-                    srs = result.get('srs')
-            except TypeError:
-                dxf_to_geopdf(dxf_path, geopdf_path, page_size=page_size, dpi=dpi)
+            if ext == ".dxf":
+                try:
+                    result = dxf_to_geopdf(input_path, geopdf_path, page_size=page_size, dpi=dpi, return_metadata=True)
+                    if isinstance(result, dict):
+                        bbox = result.get('bbox')
+                        layer_info = result.get('layer_info')
+                        srs = result.get('srs')
+                except TypeError:
+                    dxf_to_geopdf(input_path, geopdf_path, page_size=page_size, dpi=dpi)
+            elif ext in [".tif", ".tiff", ".geotiff"]:
+                raster_to_geopdf(input_path, geopdf_path, dpi=dpi, page_size=page_size)
+                # Metadaten ggf. mit GDAL auslesen (optional)
+            else:
+                raise HTTPException(status_code=400, detail="Unsupported file type for conversion")
             with conn:
                 cursor = conn.cursor()
                 cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ?, srs = ? WHERE id = ?", (True, geopdf_path, "converted", bbox, layer_info, srs, file_id))

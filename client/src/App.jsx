@@ -728,7 +728,7 @@ function App() {
           )}
 
           {page === 'container-monitor' && (
-            <ContainerMonitor />
+            <ContainerMonitor services={[]} />
           )}
 
           {page === 'geopos-client' && (
