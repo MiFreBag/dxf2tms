@@ -13,7 +13,7 @@ const TmsPreviewDialog = ({ file, onClose }) => {
       leafletMap.current = null;
     }
     // TMS-URL (Backend muss Tiles unter /tms/{file.id}/{z}/{x}/{y}.png bereitstellen)
-    const tmsUrl = `/tms/${file.id}/{z}/{x}/{y}.png`;
+    const tmsUrl = `/api/tms/${file.id}/{z}/{x}/{y}.png`;
     leafletMap.current = L.map(mapRef.current, {
       center: [47.3769, 8.5417], // Zürich als Default
       zoom: 14,
