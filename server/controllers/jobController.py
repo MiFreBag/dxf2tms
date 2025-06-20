@@ -3,11 +3,16 @@ import datetime
 import time
 import random
 import threading # Für die simulierte Job-Verarbeitung im Hintergrund
+import logging
+
+# Logging-Konfiguration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # In-memory Job-Liste (für Demo-Zwecke)
 # In einer echten Anwendung würdest du hier eine Datenbank verwenden
 jobs_db = {} # Dictionary, um Jobs per ID zu speichern
-job_processing_threads = {} # Um laufende Simulations-Threads zu verwalten
+job_processing_threads = {} # Um laufende Simulations-Threads zu verwalten {job_id: thread_object}
+thread_lock = threading.Lock() # Lock für den Zugriff auf job_processing_threads
 
 def process_job_simulation(job_id):
     """Simuliert die Verarbeitung eines Jobs."""
@@ -15,7 +20,7 @@ def process_job_simulation(job_id):
     if not job:
         return
 
-    print(f"Starting job {job['id']} ({job['type']})...")
+    logging.info(f"Starting job {job['id']} ({job['type']})...")
     job['status'] = 'running'
     job['progress'] = 0
     
@@ -28,23 +33,28 @@ def process_job_simulation(job_id):
     step_duration = duration / steps
 
     for i in range(steps):
-        if job_id not in job_processing_threads or not job_processing_threads[job_id].is_alive():
-            print(f"Job {job_id} processing was externally stopped or thread died.")
-            # Status könnte hier auf 'cancelled' oder 'failed' gesetzt werden, je nach Grund
-            return # Beende die Simulation, wenn der Thread nicht mehr aktiv sein soll
+        with thread_lock:
+            # Überprüfen, ob der Thread noch aktiv sein soll oder der Job abgebrochen wurde
+            if job_id not in job_processing_threads or \
+               threading.current_thread() != job_processing_threads.get(job_id) or \
+               job.get('status') == 'cancelled':
+                logging.info(f"Job {job_id} processing was stopped or cancelled.")
+                # Wenn abgebrochen, setze den Status und die Endzeit, falls nicht schon geschehen
+                if job.get('status') == 'cancelled' and not job.get('completedAt'):
+                    job['completedAt'] = datetime.datetime.now().isoformat()
+                    job['error'] = job.get('error', 'Job wurde während der Verarbeitung abgebrochen.')
+                    job['progress'] = None
+                # Entferne den Thread nur, wenn er der aktuelle ist und abgebrochen wurde
+                if job_id in job_processing_threads and threading.current_thread() == job_processing_threads.get(job_id):
+                    del job_processing_threads[job_id]
+                return
 
         time.sleep(step_duration)
-        job['progress'] = min(job['progress'] + (100 / steps), 100)
-        
-        # Prüfen, ob der Job abgebrochen wurde
-        if job['status'] == 'cancelled':
-            print(f"Job {job_id} was cancelled during processing.")
-            job['completedAt'] = datetime.datetime.now().isoformat()
-            job['error'] = 'Job wurde während der Verarbeitung abgebrochen.'
-            job['progress'] = None # Fortschritt bei Abbruch zurücksetzen
-            if job_id in job_processing_threads:
-                 del job_processing_threads[job_id]
+        # Stelle sicher, dass der Job noch existiert und nicht während des Sleeps gelöscht wurde
+        if job_id not in jobs_db:
+            logging.warning(f"Job {job_id} disappeared during processing sleep.")
             return
+        job['progress'] = min(job.get('progress', 0) + (100 / steps), 100)
 
     # Job-Abschluss
     is_success = random.random() > 0.2  # 80% Erfolg
@@ -64,9 +74,10 @@ def process_job_simulation(job_id):
     else:
         job['artifacts'] = []
     
-    print(f"Job {job['id']} finished with status: {job['status']}")
-    if job_id in job_processing_threads:
-        del job_processing_threads[job_id]
+    logging.info(f"Job {job['id']} finished with status: {job['status']}")
+    with thread_lock:
+        if job_id in job_processing_threads and threading.current_thread() == job_processing_threads.get(job_id):
+            del job_processing_threads[job_id]
 
 
 def get_all_jobs():
@@ -74,7 +85,8 @@ def get_all_jobs():
 
 def create_initial_jobs():
     """Erstellt einige initiale Mock-Jobs beim Start."""
-    if jobs_db: # Nur erstellen, wenn die DB leer ist (verhindert Duplikate bei Hot Reload)
+    # Diese Funktion sollte nur einmal ausgeführt werden, z.B. beim App-Start.
+    if jobs_db or job_processing_threads: # Nur erstellen, wenn alles leer ist
         return
 
     job_types = ['upload', 'convert', 'tms']
@@ -102,9 +114,10 @@ def create_initial_jobs():
         }
         jobs_db[job_id] = job
         # Starte die Simulation für diesen Job in einem neuen Thread
-        thread = threading.Thread(target=process_job_simulation, args=(job_id,))
-        job_processing_threads[job_id] = thread
-        thread.start()
+        with thread_lock:
+            thread = threading.Thread(target=process_job_simulation, args=(job_id,))
+            job_processing_threads[job_id] = thread
+            thread.start()
 
 def cancel_job_by_id(job_id):
     job = jobs_db.get(job_id)
@@ -112,20 +125,20 @@ def cancel_job_by_id(job_id):
         return None, "Job not found"
 
     if job['status'] in ['running', 'processing', 'queued', 'pending']:
-        job['status'] = 'cancelled'
-        job['completedAt'] = datetime.datetime.now().isoformat()
-        job['error'] = 'Job wurde abgebrochen.'
-        job['progress'] = None
-        
-        # Signalisiere dem Simulations-Thread, dass er stoppen soll (falls er läuft)
-        # Der Thread selbst prüft den Status und beendet sich.
-        # Wenn der Thread noch nicht gestartet wurde (queued), wird er nicht starten.
-        if job_id in job_processing_threads:
-            # Der Thread wird sich selbst beenden, wenn er den 'cancelled' Status sieht.
-            # Wir entfernen ihn hier nicht direkt, da er noch Aufräumarbeiten machen könnte.
-            pass
-        print(f"Job {job_id} cancelled.")
-        return job, None
+        with thread_lock:
+            job['status'] = 'cancelled'
+            if not job.get('completedAt'): # Setze nur, wenn nicht schon gesetzt (z.B. durch Thread selbst)
+                job['completedAt'] = datetime.datetime.now().isoformat()
+            job['error'] = job.get('error', 'Job wurde abgebrochen.')
+            job['progress'] = None
+            
+            # Der laufende Thread für diesen Job wird dies beim nächsten Check bemerken
+            # und sich selbst beenden und aus job_processing_threads entfernen.
+            # Wenn der Job 'queued' war und der Thread noch nicht gestartet ist,
+            # wird er beim Start den 'cancelled' Status sehen.
+            
+        logging.info(f"Job {job_id} marked as cancelled.")
+        return job, None # Rückgabe des Jobs, damit der Aufrufer den aktualisierten Status hat
     else:
         return None, f"Job cannot be cancelled in status: {job['status']}"
 
@@ -135,7 +148,7 @@ def retry_job_by_id(job_id):
         return None, "Job not found"
 
     if job['status'] in ['failed', 'error', 'cancelled']:
-        print(f"Retrying job {job_id}...")
+        logging.info(f"Retrying job {job_id}...")
         # Setze Job-Status zurück und starte die Verarbeitung neu
         job['status'] = 'queued'
         job['completedAt'] = None
@@ -145,35 +158,39 @@ def retry_job_by_id(job_id):
         job['createdAt'] = datetime.datetime.now().isoformat() # Update Erstellungszeit für Retry
 
         # Starte die Simulation für diesen Job in einem neuen Thread
-        # Stelle sicher, dass kein alter Thread für diesen Job mehr läuft
-        if job_id in job_processing_threads and job_processing_threads[job_id].is_alive():
-             print(f"Warning: Previous processing thread for job {job_id} might still be running.")
-             # Hier könntest du versuchen, den alten Thread zu stoppen, falls nötig.
-             # Für die Simulation reicht es, einen neuen zu starten.
-        
-        thread = threading.Thread(target=process_job_simulation, args=(job_id,))
-        job_processing_threads[job_id] = thread
-        thread.start()
+        with thread_lock:
+            # Stelle sicher, dass kein alter Thread für diesen Job mehr läuft oder registriert ist
+            if job_id in job_processing_threads:
+                old_thread = job_processing_threads.get(job_id)
+                if old_thread and old_thread.is_alive():
+                    logging.warning(f"Previous processing thread for job {job_id} was still alive during retry. This might lead to issues if not handled by the thread itself.")
+                    # In einer robusten Implementierung müsste man hier den alten Thread sauber beenden.
+                    # Für diese Simulation setzen wir darauf, dass der alte Thread den geänderten Job-Status erkennt.
+                del job_processing_threads[job_id] # Entferne alte Referenz
+            
+            thread = threading.Thread(target=process_job_simulation, args=(job_id,))
+            job_processing_threads[job_id] = thread
+            thread.start()
         return job, None
     else:
         return None, f"Job cannot be retried in status: {job['status']}"
 
 def delete_job_by_id(job_id):
     if job_id in jobs_db:
-        # Signalisiere dem Simulations-Thread, dass er stoppen soll (falls er läuft)
-        job = jobs_db[job_id]
-        job['status'] = 'cancelled' # Um den Thread zu stoppen, falls er läuft
-        
-        # Warte kurz, damit der Thread ggf. reagieren kann (optional, je nach Implementierung)
-        # time.sleep(0.1) 
+        with thread_lock:
+            job_to_delete = jobs_db.get(job_id)
+            if job_to_delete:
+                # Markiere den Job als 'cancelled', um den laufenden Thread (falls vorhanden) zu informieren
+                job_to_delete['status'] = 'cancelled' 
+                # Der Thread wird sich selbst aus job_processing_threads entfernen.
+                # Wenn der Thread nicht läuft, passiert nichts Schlimmes.
 
-        if job_id in job_processing_threads:
-            # Hier könntest du versuchen, den Thread explizit zu joinen, wenn er nicht daemonized ist.
-            # Da unsere Simulation den Status prüft, sollte das reichen.
-            del job_processing_threads[job_id]
-
-        del jobs_db[job_id]
-        print(f"Job {job_id} deleted.")
+            # Entferne den Job aus der Datenbank
+            if job_id in jobs_db:
+                 del jobs_db[job_id]
+            # Der Thread, falls er noch in job_processing_threads war, wird beim nächsten Check bemerken,
+            # dass der Job weg ist oder 'cancelled' und sich beenden.
+        logging.info(f"Job {job_id} deleted.")
         return True
     return False
 
@@ -189,5 +206,6 @@ def get_job_artifact(job_id, artifact_name_part):
     
     return None, "Artifact not found"
 
-# Erstelle initiale Jobs beim ersten Import des Moduls
-create_initial_jobs()
+# create_initial_jobs() # Wird nun von app.py aufgerufen, um mehr Kontrolle zu haben
+                        # oder kann hier bleiben, wenn das Modul nur einmal importiert wird.
+                        # Für Flask mit `debug=True` (Auto-Reload) ist es besser, dies von app.py zu steuern.
