@@ -121,7 +121,6 @@ function App() {
       if (response.ok) {
         const data = await response.json();
         // Kombiniere Container, Images, Volumes zu einer Service-Liste für ServiceTaskManager
-        // (z.B. alle Container als Services, ggf. Images/Volumes als weitere Einträge)
         const services = [];
         if (Array.isArray(data.containers)) {
           services.push(...data.containers.map(c => ({
@@ -130,12 +129,13 @@ function App() {
             status: c.status,
             image: c.image,
             created: c.created,
-            // weitere Felder nach Bedarf
           })));
         }
-        // Optional: Images und Volumes als weitere Services einfügen
-        // if (Array.isArray(data.images)) { ... }
         setDockerServicesData(services);
+        // ContainerMonitor-States wieder setzen
+        setDockerContainers(data.containers || []);
+        setDockerImages(data.images || []);
+        setDockerVolumes(data.volumes || []);
       } else if (response.status === 403) {
         console.error('Token abgelaufen beim Laden der Service-Daten');
         handleTokenExpiration();

@@ -13,7 +13,9 @@ import {
   FaStop,
   FaPlay,
   FaRedo,
-  FaCog
+  FaCog,
+  FaPause,
+  FaPlusCircle
 } from 'react-icons/fa';
 
 // Service Icons Mapping
@@ -29,139 +31,6 @@ const serviceIcons = {
   'default': FaCog
 };
 
-// Mock Services Data (in Produktion würde das vom Backend kommen)
-const mockServices = [
-  {
-    id: 'api-gateway',
-    name: 'API Gateway',
-    status: 'running',
-    cpu: 35,
-    memory: 2048,
-    memoryMax: 4096,
-    network: { in: 125, out: 89 },
-    uptime: 3600 * 24 * 7, // 7 Tage in Sekunden
-    port: 3000,
-    pid: 12345,
-    version: '2.4.1',
-    lastRestart: new Date(Date.now() - 3600 * 24 * 7 * 1000),
-    errors: 0,
-    requests: 125000
-  },
-  {
-    id: 'database',
-    name: 'PostgreSQL Database',
-    status: 'running',
-    cpu: 15,
-    memory: 8192,
-    memoryMax: 16384,
-    network: { in: 45, out: 32 },
-    uptime: 3600 * 24 * 30,
-    port: 5432,
-    pid: 12346,
-    version: '14.2',
-    lastRestart: new Date(Date.now() - 3600 * 24 * 30 * 1000),
-    errors: 0,
-    requests: 0,
-    connections: 45
-  },
-  {
-    id: 'auth-service',
-    name: 'Authentication Service',
-    status: 'running',
-    cpu: 8,
-    memory: 512,
-    memoryMax: 1024,
-    network: { in: 12, out: 8 },
-    uptime: 3600 * 24 * 2,
-    port: 3001,
-    pid: 12347,
-    version: '1.2.0',
-    lastRestart: new Date(Date.now() - 3600 * 24 * 2 * 1000),
-    errors: 2,
-    requests: 45000
-  },
-  {
-    id: 'video-service',
-    name: 'Video Streaming Service',
-    status: 'warning',
-    cpu: 78,
-    memory: 3072,
-    memoryMax: 4096,
-    network: { in: 890, out: 1250 },
-    uptime: 3600 * 12,
-    port: 3002,
-    pid: 12348,
-    version: '3.1.0',
-    lastRestart: new Date(Date.now() - 3600 * 12 * 1000),
-    errors: 15,
-    requests: 8900
-  },
-  {
-    id: 'ai-service',
-    name: 'AI Traffic Optimizer',
-    status: 'running',
-    cpu: 45,
-    memory: 2560,
-    memoryMax: 4096,
-    network: { in: 67, out: 45 },
-    uptime: 3600 * 24,
-    port: 3003,
-    pid: 12349,
-    version: '1.0.5',
-    lastRestart: new Date(Date.now() - 3600 * 24 * 1000),
-    errors: 0,
-    requests: 12000
-  },
-  {
-    id: 'traffic-control',
-    name: 'Traffic Control System',
-    status: 'error',
-    cpu: 0,
-    memory: 0,
-    memoryMax: 2048,
-    network: { in: 0, out: 0 },
-    uptime: 0,
-    port: 3004,
-    pid: null,
-    version: '2.0.0',
-    lastRestart: new Date(),
-    errors: 125,
-    requests: 0
-  },
-  {
-    id: 'monitoring',
-    name: 'Monitoring Service',
-    status: 'running',
-    cpu: 22,
-    memory: 768,
-    memoryMax: 2048,
-    network: { in: 156, out: 89 },
-    uptime: 3600 * 24 * 14,
-    port: 3005,
-    pid: 12350,
-    version: '1.5.2',
-    lastRestart: new Date(Date.now() - 3600 * 24 * 14 * 1000),
-    errors: 0,
-    requests: 567000
-  },
-  {
-    id: 'backup',
-    name: 'Backup Service',
-    status: 'running',
-    cpu: 5,
-    memory: 256,
-    memoryMax: 512,
-    network: { in: 2, out: 156 },
-    uptime: 3600 * 24 * 60,
-    port: 3006,
-    pid: 12351,
-    version: '1.1.0',
-    lastRestart: new Date(Date.now() - 3600 * 24 * 60 * 1000),
-    errors: 0,
-    requests: 0
-  }
-];
-
 // Hilfsfunktionen
 const formatUptime = (seconds) => {
   const days = Math.floor(seconds / 86400);
@@ -174,6 +43,7 @@ const formatUptime = (seconds) => {
 };
 
 const formatBytes = (bytes) => {
+  if (bytes === null || bytes === undefined || isNaN(parseFloat(bytes))) return 'N/A';
   if (bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -182,6 +52,7 @@ const formatBytes = (bytes) => {
 };
 
 const formatMemory = (mb) => {
+  if (mb === null || mb === undefined || isNaN(parseFloat(mb))) return 'N/A';
   if (mb < 1024) return `${mb} MB`;
   return `${(mb / 1024).toFixed(1)} GB`;
 };
@@ -193,13 +64,13 @@ const interpretDockerStatus = (statusString) => {
   if (lowerStatus.includes('up') || lowerStatus.includes('running')) {
     return { text: 'Running', color: 'text-green-500', icon: FaCheckCircle };
   } else if (lowerStatus.includes('exited') || lowerStatus.includes('stopped')) {
-    return { text: 'Exited', color: 'text-gray-500', icon: FaStop };
+    return { text: 'Stopped', color: 'text-gray-500', icon: FaStop };
   } else if (lowerStatus.includes('restarting')) {
     return { text: 'Restarting', color: 'text-yellow-500', icon: FaRedo };
   } else if (lowerStatus.includes('paused')) {
-    return { text: 'Paused', color: 'text-blue-500', icon: FaPlay };
+    return { text: 'Paused', color: 'text-blue-500', icon: FaPause };
   } else if (lowerStatus.includes('created')) {
-    return { text: 'Created', color: 'text-blue-500', icon: FaPlay };
+    return { text: 'Created', color: 'text-indigo-500', icon: FaPlusCircle };
   }
   return { text: statusString, color: 'text-yellow-500', icon: FaExclamationTriangle };
 };
@@ -208,9 +79,12 @@ const interpretDockerStatus = (statusString) => {
 const ServiceCard = ({ service }) => {
   const serviceType = service.name ? service.name.toLowerCase().split(' ')[0] : 'default';
   const Icon = serviceIcons[serviceType] || serviceIcons.default;
-  const interpretedStatus = interpretDockerStatus(service.status);
+  // Backend liefert bereits interpretierten Status oder wir interpretieren hier
+  // Annahme: service.status ist der rohe String vom Docker Backend
+  const interpretedStatus = service.interpretedStatus || interpretDockerStatus(service.status);
 
   const getStatusBgColor = (status) => {
+    // Nutzt den interpretierten Text für die Farbe
     switch (status) {
       case 'running': return 'bg-green-50 dark:bg-green-900/20';
       case 'warning': return 'bg-yellow-50 dark:bg-yellow-900/20';
@@ -221,6 +95,11 @@ const ServiceCard = ({ service }) => {
   };
 
   const StatusIcon = interpretedStatus.icon;
+  const cpuUsage = service.cpu || 0;
+  const memoryUsage = service.memory || 0; // in MB
+  const memoryMax = service.memoryMax || 0; // in MB
+  const memoryPercentage = memoryMax > 0 ? (memoryUsage / memoryMax) * 100 : 0;
+
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -234,7 +113,7 @@ const ServiceCard = ({ service }) => {
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <StatusIcon className={`${interpretedStatus.color}`} />
                 <span className="capitalize">{interpretedStatus.text}</span>
-                {service.id && <span className="truncate"> • ID: {service.id.substring(0,12)}</span>}
+                {service.id && <span className="truncate"> • ID: {service.id}</span>}
               </div>
             </div>
           </div>
@@ -249,13 +128,13 @@ const ServiceCard = ({ service }) => {
             <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
               <FaMicrochip /> CPU
             </span>
-            <span className="font-medium">{service.cpu || 0}%</span>
+            <span className="font-medium">{cpuUsage}%</span>
           </div>
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
             <div 
               className={`h-2 rounded-full transition-all duration-500 ${
-                (service.cpu || 0) > 80 ? 'bg-red-500' : 
-                (service.cpu || 0) > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                cpuUsage > 80 ? 'bg-red-500' : 
+                cpuUsage > 60 ? 'bg-yellow-500' : 'bg-green-500'
               }`}
               style={{ width: `${service.cpu || 0}%` }}
             />
@@ -278,38 +157,40 @@ const ServiceCard = ({ service }) => {
         </div>
         
         {/* Memory Usage */}
-        {service.memory && service.memoryMax && (
-          <div>
+        {(memoryUsage !== null && memoryMax !== null && memoryMax > 0) && (
+         <div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
                 <FaMemory /> Memory
               </span>
               <span className="font-medium">
                 {formatMemory(service.memory)} / {formatMemory(service.memoryMax)}
+                {/* {formatMemory(memoryUsage)} / {formatMemory(memoryMax)} */}
               </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div 
                 className={`h-2 rounded-full transition-all duration-500 ${
-                  (service.memory / service.memoryMax) * 100 > 80 ? 'bg-red-500' : 
-                  (service.memory / service.memoryMax) * 100 > 60 ? 'bg-yellow-500' : 'bg-blue-500'
+                  memoryPercentage > 80 ? 'bg-red-500' : 
+                  memoryPercentage > 60 ? 'bg-yellow-500' : 'bg-blue-500'
                 }`}
-                style={{ width: `${(service.memory / service.memoryMax) * 100}%` }}
+                style={{ width: `${memoryPercentage}%` }}
               />
             </div>
           </div>
         )}
         
         {/* Network */}
-        {service.network && (
+        {service.network && (service.network.in !== null || service.network.out !== null) && (
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
               <FaNetworkWired className="text-green-500" />
-              <span>↓ {formatBytes((service.network?.in || 0) * 1024)}/s</span>
+              {/* Annahme: Backend liefert Bytes/s, oder anpassen falls KB/s */}
+              <span>↓ {formatBytes(service.network?.in || 0)}/s</span>
             </div>
             <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
               <FaNetworkWired className="text-blue-500" />
-              <span>↑ {formatBytes((service.network?.out || 0) * 1024)}/s</span>
+              <span>↑ {formatBytes(service.network?.out || 0)}/s</span>
             </div>
           </div>
         )}
@@ -322,7 +203,10 @@ const ServiceCard = ({ service }) => {
               <span>Uptime: {formatUptime(service.uptime)}</span>
             </div>
           )}
-          {service.requests > 0 && (
+          {/* Diese Felder (requests, connections, errors) sind schwer direkt von Docker zu bekommen */}
+          {/* Sie könnten Applikations-spezifisch sein oder aus Log-Analyse stammen */}
+          {/* Vorerst auskommentiert oder als optional betrachten */}
+          {/* {service.requests > 0 && (
             <div>Requests: {service.requests.toLocaleString()}</div>
           )}
           {service.connections !== undefined && (
@@ -330,18 +214,40 @@ const ServiceCard = ({ service }) => {
           )}
           {service.errors > 0 && (
             <div className="text-red-500">Errors: {service.errors}</div>
-          )}
+          )} */}
         </div>
+
+        {/* Logs */}
+        {service.logs && (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Recent Logs:</h4>
+            <pre className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs max-h-32 overflow-y-auto whitespace-pre-wrap break-all">
+              {service.logs}
+            </pre>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="mt-4 flex gap-2">
-          <button className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed" disabled={interpretedStatus.text !== 'Exited'}>
+          <button 
+            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed" 
+            disabled={!['Stopped', 'Exited', 'Created'].includes(interpretedStatus.text)}
+            onClick={() => console.log("Start action for:", service.id)} // Placeholder
+          >
             Start
           </button>
-          <button className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed" disabled={interpretedStatus.text !== 'Running'}>
+          <button 
+            className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed" 
+            disabled={interpretedStatus.text !== 'Running'}
+            onClick={() => console.log("Stop action for:", service.id)} // Placeholder
+          >
             Stop
           </button>
-          <button className="px-3 py-1 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed" disabled={interpretedStatus.text !== 'Running'}>
+          <button 
+            className="px-3 py-1 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed" 
+            disabled={interpretedStatus.text !== 'Running'}
+            onClick={() => console.log("Restart action for:", service.id)} // Placeholder
+          >
             Restart
           </button>
         </div>
@@ -350,30 +256,79 @@ const ServiceCard = ({ service }) => {
   );
 };
 
-const ServiceTaskManager = ({ services = [] }) => {
+const ServiceTaskManager = () => {
+  const [servicesData, setServicesData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [processedServices, setProcessedServices] = useState([]);
 
+  const fetchDockerServices = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get('/api/docker/services'); // Anpassen an deinen Backend-Endpunkt
+      if (Array.isArray(response.data)) {
+        setServicesData(response.data);
+      } else {
+        console.warn("API did not return an array for services:", response.data);
+        setServicesData([]);
+      }
+    } catch (err) {
+      console.error("Error fetching services:", err);
+      setError(err.message || "Failed to fetch services from backend.");
+      setServicesData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (Array.isArray(services)) {
-      const newProcessedServices = services.map(service => ({
+    fetchDockerServices();
+    // Optional: Polling einrichten, um die Daten regelmäßig zu aktualisieren
+    // const intervalId = setInterval(fetchDockerServices, 30000); // Alle 30 Sekunden
+    // return () => clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    if (Array.isArray(servicesData)) {
+      const newProcessedServices = servicesData.map(service => ({
         ...service,
-        interpretedStatus: interpretDockerStatus(service.status)
+        interpretedStatus: interpretDockerStatus(service.status) // service.status ist der rohe String
       }));
       setProcessedServices(newProcessedServices);
     } else {
       setProcessedServices([]);
     }
-  }, [services]);
+  }, [servicesData]);
 
   const activeServices = processedServices.filter(s => s.interpretedStatus.text === 'Running' || s.interpretedStatus.text === 'Restarting' || s.interpretedStatus.text === 'Paused' || s.interpretedStatus.text === 'Created');
-  const completedServices = processedServices.filter(s => s.interpretedStatus.text === 'Exited');
-  const otherServices = processedServices.filter(s => !['Running', 'Restarting', 'Paused', 'Created', 'Exited'].includes(s.interpretedStatus.text));
+  const stoppedServices = processedServices.filter(s => s.interpretedStatus.text === 'Stopped' || s.interpretedStatus.text === 'Exited');
+  const otherServices = processedServices.filter(s => !['Running', 'Restarting', 'Paused', 'Created', 'Stopped', 'Exited'].includes(s.interpretedStatus.text));
+
+  if (loading) {
+    return <div className="p-4 text-center text-gray-600 dark:text-gray-300">Lade Service-Daten...</div>;
+  }
+
+  if (error) {
+    return <div className="p-4 text-center text-red-500">Fehler beim Laden der Daten: {error} <button onClick={fetchDockerServices} className="ml-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">Erneut versuchen</button></div>;
+  }
 
   return (
     <div className="p-4">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Service Task Manager</h2>
-      {processedServices.length === 0 ? (
-        <div className="text-gray-500 dark:text-gray-400 p-4 text-center">Keine Service-Daten vom Backend geladen oder keine Services vorhanden.</div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Service Task Manager</h2>
+        <button 
+          onClick={fetchDockerServices} 
+          className="px-3 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600 flex items-center gap-2 disabled:opacity-50"
+          disabled={loading}
+        >
+          <FaRedo className={loading ? "animate-spin" : ""} />
+          Aktualisieren
+        </button>
+      </div>
+      
+      {processedServices.length === 0 && !loading ? (
+        <div className="text-gray-500 dark:text-gray-400 p-4 text-center">Keine Services gefunden oder Daten verfügbar.</div>
       ) : (
         <>
           {activeServices.length > 0 && (
@@ -387,11 +342,11 @@ const ServiceTaskManager = ({ services = [] }) => {
             </div>
           )}
 
-          {completedServices.length > 0 && (
+          {stoppedServices.length > 0 && (
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Abgeschlossene Tasks / Beendete Services ({completedServices.length})</h3>
+              <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Gestoppte / Beendete Services ({stoppedServices.length})</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {completedServices.map((service) => (
+                {stoppedServices.map((service) => (
                   <ServiceCard key={service.id} service={service} />
                 ))}
               </div>
@@ -400,7 +355,7 @@ const ServiceTaskManager = ({ services = [] }) => {
 
           {otherServices.length > 0 && (
              <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Andere Status ({otherServices.length})</h3>
+              <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Andere Statuswerte ({otherServices.length})</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {otherServices.map((service) => (
                   <ServiceCard key={service.id} service={service} />
