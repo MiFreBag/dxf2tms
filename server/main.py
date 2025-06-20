@@ -862,7 +862,7 @@ app.include_router(job_router, prefix="/api/jobs")
 # Neue Systemmetriken-Endpunkte hinzufügen:
 
 @app.get("/api/system/metrics")
-async def system_metrics(current_user: dict = Depends(get_current_user)):
+async def system_metrics(user: str = Depends(verify_token)):
     """
     Vollständige Systemmetriken abrufen
     
@@ -912,7 +912,7 @@ async def system_metrics(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Failed to fetch system metrics: {str(e)}")
 
 @app.get("/api/system/cpu")
-async def cpu_metrics(current_user: dict = Depends(get_current_user)):
+async def cpu_metrics(user: str = Depends(verify_token)):
     """CPU-Metriken abrufen"""
     try:
         return get_cpu_metrics()
@@ -921,7 +921,7 @@ async def cpu_metrics(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Failed to fetch CPU metrics: {str(e)}")
 
 @app.get("/api/system/memory")
-async def memory_metrics(current_user: dict = Depends(get_current_user)):
+async def memory_metrics(user: str = Depends(verify_token)):
     """Memory-Metriken abrufen"""
     try:
         return get_memory_metrics()
@@ -930,7 +930,7 @@ async def memory_metrics(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Failed to fetch memory metrics: {str(e)}")
 
 @app.get("/api/system/disk")
-async def disk_metrics(current_user: dict = Depends(get_current_user)):
+async def disk_metrics(user: str = Depends(verify_token)):
     """Disk-Metriken abrufen"""
     try:
         return get_disk_metrics()
@@ -939,7 +939,7 @@ async def disk_metrics(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Failed to fetch disk metrics: {str(e)}")
 
 @app.get("/api/system/network")
-async def network_metrics(current_user: dict = Depends(get_current_user)):
+async def network_metrics(user: str = Depends(verify_token)):
     """Network-Metriken abrufen"""
     try:
         return get_network_metrics()
@@ -948,7 +948,7 @@ async def network_metrics(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Failed to fetch network metrics: {str(e)}")
 
 @app.get("/api/system/processes")
-async def process_metrics(current_user: dict = Depends(get_current_user)):
+async def process_metrics(user: str = Depends(verify_token)):
     """Prozess-Metriken abrufen"""
     try:
         return metrics_collector.get_process_metrics()
@@ -957,7 +957,7 @@ async def process_metrics(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Failed to fetch process metrics: {str(e)}")
 
 @app.get("/api/system/docker")
-async def docker_metrics(current_user: dict = Depends(get_current_user)):
+async def docker_metrics(user: str = Depends(verify_token)):
     """Docker-spezifische Metriken abrufen"""
     try:
         return metrics_collector.get_docker_metrics()
@@ -968,7 +968,7 @@ async def docker_metrics(current_user: dict = Depends(get_current_user)):
 # Erweiterte Container-Endpunkte
 
 @app.get("/api/containers/{container_id}/stats")
-async def container_stats(container_id: str, current_user: dict = Depends(get_current_user)):
+async def container_stats(container_id: str, user: str = Depends(verify_token)):
     """Detaillierte Container-Statistiken abrufen"""
     try:
         if not metrics_collector.docker_client:
@@ -1030,7 +1030,7 @@ async def container_logs(
     container_id: str, 
     lines: int = 100,
     since: str = None,
-    current_user: dict = Depends(get_current_user)
+    user: str = Depends(verify_token)
 ):
     """Container-Logs abrufen"""
     try:
