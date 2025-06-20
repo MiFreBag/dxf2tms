@@ -120,18 +120,31 @@ function App() {
       });
       if (response.ok) {
         const data = await response.json();
-        setDockerContainers(data.containers || []);
-        setDockerImages(data.images || []);
-        setDockerVolumes(data.volumes || []);
+        // Kombiniere Container, Images, Volumes zu einer Service-Liste für ServiceTaskManager
+        // (z.B. alle Container als Services, ggf. Images/Volumes als weitere Einträge)
+        const services = [];
+        if (Array.isArray(data.containers)) {
+          services.push(...data.containers.map(c => ({
+            ...c,
+            name: c.name || c.id,
+            status: c.status,
+            image: c.image,
+            created: c.created,
+            // weitere Felder nach Bedarf
+          })));
+        }
+        // Optional: Images und Volumes als weitere Services einfügen
+        // if (Array.isArray(data.images)) { ... }
+        setDockerServicesData(services);
       } else if (response.status === 403) {
-        console.error('Token abgelaufen beim Laden der Container-Daten');
+        console.error('Token abgelaufen beim Laden der Service-Daten');
         handleTokenExpiration();
       } else {
-        addMessage(`Fehler beim Abrufen der Container-Daten: ${response.status}`, 'error');
+        addMessage(`Fehler beim Abrufen der Service-Daten: ${response.status}`, 'error');
       }
     } catch (error) {
-      console.error('Fehler beim Abrufen der Container-Daten:', error);
-      addMessage('Netzwerkfehler beim Abrufen der Container-Daten.', 'error');
+      console.error('Fehler beim Abrufen der Service-Daten:', error);
+      addMessage('Netzwerkfehler beim Abrufen der Service-Daten.', 'error');
     }
   }, [token, addMessage]);
 
