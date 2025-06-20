@@ -5,21 +5,46 @@ import 'leaflet/dist/leaflet.css'
 const API = '/api'
 
 // Helper component to handle map updates
-function MapController({ selectedLayer, useMapServer }) {
+function MapController({ selectedLayer }) {
   const map = useMap()
   
   useEffect(() => {
-    if (selectedLayer && selectedLayer.config && selectedLayer.config.bounds) {
-      const bounds = selectedLayer.config.bounds
-      // Convert bounds array to Leaflet bounds format
-      // bounds should be [minX, minY, maxX, maxY] -> [[minY, minX], [maxY, maxX]]
-      const leafletBounds = [[bounds[1], bounds[0]], [bounds[3], bounds[2]]]
+    console.log('MapController - selectedLayer:', selectedLayer)
+    
+    if (selectedLayer) {
+      // Try different possible bounds locations
+      let bounds = null
       
-      // Fit map to bounds with some padding
-      map.fitBounds(leafletBounds, { 
-        padding: [20, 20],
-        maxZoom: 18 // Prevent zooming too far in
-      })
+      if (selectedLayer.config && selectedLayer.config.bounds) {
+        bounds = selectedLayer.config.bounds
+        console.log('Found bounds in config:', bounds)
+      } else if (selectedLayer.bounds) {
+        bounds = selectedLayer.bounds
+        console.log('Found bounds directly:', bounds)
+      } else if (selectedLayer.metadata && selectedLayer.metadata.bounds) {
+        bounds = selectedLayer.metadata.bounds
+        console.log('Found bounds in metadata:', bounds)
+      }
+      
+      if (bounds && Array.isArray(bounds) && bounds.length === 4) {
+        try {
+          // Convert bounds array to Leaflet bounds format
+          // bounds should be [minX, minY, maxX, maxY] -> [[minY, minX], [maxY, maxX]]
+          const leafletBounds = [[bounds[1], bounds[0]], [bounds[3], bounds[2]]]
+          
+          console.log('Fitting to bounds:', leafletBounds)
+          
+          // Fit map to bounds with some padding
+          map.fitBounds(leafletBounds, { 
+            padding: [20, 20],
+            maxZoom: 18 // Prevent zooming too far in
+          })
+        } catch (error) {
+          console.error('Error fitting bounds:', error)
+        }
+      } else {
+        console.log('No valid bounds found for layer:', selectedLayer)
+      }
     }
   }, [map, selectedLayer])
   
@@ -31,20 +56,24 @@ function Map() {
   const [selected, setSelected] = useState('')
   const [useMapServer, setUseMapServer] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const fetchLayers = async () => {
       try {
+        console.log('Fetching layers from:', `${API}/tms`)
         const response = await fetch(`${API}/tms`)
         if (response.ok) {
           const data = await response.json()
           setLayers(data)
-          console.log('Loaded layers:', data) // Debug log
+          console.log('Loaded layers:', JSON.stringify(data, null, 2)) // Detailed debug log
         } else {
           console.error('Failed to fetch layers:', response.status)
+          setError(`HTTP ${response.status}: ${response.statusText}`)
         }
       } catch (error) {
         console.error('Error fetching layers:', error)
+        setError(error.message)
       } finally {
         setLoading(false)
       }
@@ -82,8 +111,16 @@ function Map() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-96 bg-white rounded-lg shadow-sm border">
         <div className="text-gray-500">Lade Kartenlayer...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96 bg-white rounded-lg shadow-sm border">
+        <div className="text-red-500">Fehler beim Laden der Layer: {error}</div>
       </div>
     )
   }
@@ -137,10 +174,19 @@ function Map() {
           <div className="mt-4 p-3 bg-gray-50 rounded-md">
             <h4 className="font-medium text-gray-900 mb-2">Layer-Informationen</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-              <div><strong>Dateiname:</strong> {selectedLayer.fileName || 'Unbekannt'}</div>
-              {selectedLayer.config && selectedLayer.config.bounds && (
-                <div><strong>Bounding Box:</strong> {selectedLayer.config.bounds.map(x => x.toFixed(2)).join(', ')}</div>
+              <div><strong>Dateiname:</strong> {selectedLayer.fileName || selectedLayer.id || 'Unbekannt'}</div>
+              
+              {/* Try different bounds locations */}
+              {selectedLayer.config && selectedLayer.config.bounds ? (
+                <div><strong>Config Bounds:</strong> {selectedLayer.config.bounds.map(x => x.toFixed(2)).join(', ')}</div>
+              ) : selectedLayer.bounds ? (
+                <div><strong>Direct Bounds:</strong> {selectedLayer.bounds.map(x => x.toFixed(2)).join(', ')}</div>
+              ) : selectedLayer.metadata && selectedLayer.metadata.bounds ? (
+                <div><strong>Metadata Bounds:</strong> {selectedLayer.metadata.bounds.map(x => x.toFixed(2)).join(', ')}</div>
+              ) : (
+                <div><strong>Bounds:</strong> Nicht verfügbar</div>
               )}
+              
               {selectedLayer.srs && (
                 <div><strong>Koordinatensystem:</strong> {selectedLayer.srs}</div>
               )}
@@ -151,12 +197,20 @@ function Map() {
                 <div><strong>Max Zoom:</strong> {selectedLayer.config.maxzoom}</div>
               )}
             </div>
+            
+            {/* Debug info */}
+            <details className="mt-2">
+              <summary className="text-xs text-gray-500 cursor-pointer">Debug: Raw Layer Data</summary>
+              <pre className="text-xs bg-gray-100 p-2 mt-1 rounded overflow-auto max-h-32">
+                {JSON.stringify(selectedLayer, null, 2)}
+              </pre>
+            </details>
           </div>
         )}
       </div>
 
       {/* Map Container */}
-      <div className="flex-1 bg-white rounded-lg shadow-sm border overflow-hidden">
+      <div className="flex-1 bg-white rounded-lg shadow-sm border overflow-hidden" style={{ minHeight: '500px' }}>
         <MapContainer 
           center={[47.3769, 8.5417]} 
           zoom={13} 
@@ -165,7 +219,7 @@ function Map() {
           attributionControl={true}
         >
           {/* Map Controller for handling bounds updates */}
-          <MapController selectedLayer={selectedLayer} useMapServer={useMapServer} />
+          <MapController selectedLayer={selectedLayer} />
           
           {/* Base Layer */}
           <TileLayer
