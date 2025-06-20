@@ -2,8 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
-const API = '/api'
-
 // Helper component to handle map updates
 function MapController({ selectedLayer }) {
   const map = useMap()
@@ -63,36 +61,12 @@ function MapController({ selectedLayer }) {
   return null
 }
 
-function Map() {
-  const [layers, setLayers] = useState([])
+function Map({ files = [], onDeleteLayer }) {
   const [selected, setSelected] = useState('')
   const [useMapServer, setUseMapServer] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
 
-  useEffect(() => {
-    const fetchLayers = async () => {
-      try {
-        console.log('Fetching layers from:', `${API}/tms`)
-        const response = await fetch(`${API}/tms`)
-        if (response.ok) {
-          const data = await response.json()
-          setLayers(data)
-          console.log('Loaded layers:', JSON.stringify(data, null, 2)) // Detailed debug log
-        } else {
-          console.error('Failed to fetch layers:', response.status)
-          setError(`HTTP ${response.status}: ${response.statusText}`)
-        }
-      } catch (error) {
-        console.error('Error fetching layers:', error)
-        setError(error.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    fetchLayers()
-  }, [])
+  // Layer-Liste aus Props
+  const layers = files
 
   // Helper für TileLayer-URL (Leaflet erwartet absoluten Pfad)
   const getTileLayerUrl = (layer) => {
@@ -109,32 +83,6 @@ function Map() {
   // Handle layer selection
   const handleLayerSelect = (layerId) => {
     setSelected(layerId)
-    
-    if (layerId) {
-      const layer = layers.find(l => l.id === layerId)
-      if (layer) {
-        console.log('Selected layer:', layer) // Debug log
-        if (layer.config && layer.config.bounds) {
-          console.log('Layer bounds:', layer.config.bounds) // Debug log
-        }
-      }
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96 bg-white rounded-lg shadow-sm border">
-        <div className="text-gray-500">Lade Kartenlayer...</div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-96 bg-white rounded-lg shadow-sm border">
-        <div className="text-red-500">Fehler beim Laden der Layer: {error}</div>
-      </div>
-    )
   }
 
   return (
@@ -154,7 +102,7 @@ function Map() {
               <option value="">-- Keinen Layer ausgewählt --</option>
               {layers.map(l => (
                 <option key={l.id} value={l.id}>
-                  {l.fileName || l.id}
+                  {l.fileName || l.name || l.id}
                   {l.config && l.config.bounds ? 
                     ` [${l.config.bounds.map(x => x.toFixed(2)).join(', ')}]` : 
                     ' [Keine Bounds]'
@@ -163,7 +111,6 @@ function Map() {
               ))}
             </select>
           </div>
-          
           <div className="flex flex-col">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Basiskarte
@@ -180,13 +127,12 @@ function Map() {
             </button>
           </div>
         </div>
-        
-        {/* Layer Info */}
+        {/* Layer Info + Delete Button */}
         {selectedLayer && (
           <div className="mt-4 p-3 bg-gray-50 rounded-md">
             <h4 className="font-medium text-gray-900 mb-2">Layer-Informationen</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-              <div><strong>Dateiname:</strong> {selectedLayer.fileName || selectedLayer.id || 'Unbekannt'}</div>
+              <div><strong>Dateiname:</strong> {selectedLayer.fileName || selectedLayer.name || selectedLayer.id || 'Unbekannt'}</div>
               
               {/* Try different bounds locations */}
               {selectedLayer.config && selectedLayer.config.bounds ? (
@@ -226,7 +172,15 @@ function Map() {
                 <div><strong>Max Zoom:</strong> {selectedLayer.config.maxzoom}</div>
               )}
             </div>
-            
+            {/* Delete Button */}
+            {onDeleteLayer && (
+              <button
+                className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow-sm"
+                onClick={() => onDeleteLayer(selectedLayer.id)}
+              >
+                Layer löschen
+              </button>
+            )}
             {/* Debug info */}
             <details className="mt-2">
               <summary className="text-xs text-gray-500 cursor-pointer">Debug: Raw Layer Data</summary>
@@ -282,7 +236,7 @@ function Map() {
           `${layers.length} TMS-Layer verfügbar` : 
           'Keine TMS-Layer gefunden'
         }
-        {selectedLayer && ` • Aktiver Layer: ${selectedLayer.fileName || selectedLayer.id}`}
+        {selectedLayer && ` • Aktiver Layer: ${selectedLayer.fileName || selectedLayer.name || selectedLayer.id}`}
       </div>
     </>
   )

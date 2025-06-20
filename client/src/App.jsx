@@ -795,9 +795,9 @@ function App() {
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Kartenansicht</h2>
                 <p className="text-gray-600">Konvertierte TMS-Layer auf der Karte anzeigen</p>
               </div>
-              {/* Verwendung der Map.jsx Komponente */}
+              {/* Verwendung der Map.jsx Komponente mit Layer-Liste und Delete-Handler */}
               <div className="h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border overflow-hidden">
-                <Map />
+                <Map files={files.filter(f => f.converted)} onDeleteLayer={handleDelete} />
               </div>
             </div>
           )}
@@ -972,7 +972,7 @@ function App() {
 
         {/* TMS-Preview-Dialog */}
         {showTmsPreviewDialog && tmsPreviewFile && (
-          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
+          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setTmsPreviewDialog(false)} />
         )}
         </main>
       </div>
