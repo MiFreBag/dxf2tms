@@ -266,13 +266,22 @@ const ServiceTaskManager = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get('/api/docker/services'); // Anpassen an deinen Backend-Endpunkt
-      if (Array.isArray(response.data)) {
-        setServicesData(response.data);
-      } else {
-        console.warn("API did not return an array for services:", response.data);
-        setServicesData([]);
+      const response = await axios.get('/api/containers'); // Korrigierter Endpunkt
+      const data = response.data;
+      // Kombiniere Container, Images, Volumes zu einer Service-Liste
+      const services = [];
+      if (Array.isArray(data.containers)) {
+        services.push(...data.containers.map(c => ({
+          ...c,
+          name: c.name || c.id,
+          status: c.status,
+          image: c.image,
+          created: c.created,
+        })));
       }
+      // Optional: Images und Volumes als weitere Services einfügen
+      // if (Array.isArray(data.images)) { ... }
+      setServicesData(services);
     } catch (err) {
       console.error("Error fetching services:", err);
       setError(err.message || "Failed to fetch services from backend.");
