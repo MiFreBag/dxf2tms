@@ -134,13 +134,13 @@ function App() {
     setPage('login');
 };
 
-  const addMessage = (text, type = 'info') => {
-    const id = Date.now()
-    setMessages(prev => [...prev, { id, text, type }])
+  const addMessage = useCallback((text, type = 'info') => {
+    const id = Date.now();
+    setMessages(prev => [...prev, { id, text, type }]);
     setTimeout(() => {
-      setMessages(prev => prev.filter(msg => msg.id !== id))
-    }, 5000)
-  }
+      setMessages(prev => prev.filter(msg => msg.id !== id));
+    }, 5000);
+  }, []);
 
   const handleUpload = async (event) => {
     try {
