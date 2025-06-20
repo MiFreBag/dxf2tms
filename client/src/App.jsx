@@ -20,6 +20,9 @@ import ContainerMonitor from './components/ContainerMonitor.jsx';
 import Login from './components/Login';
 import TmsPreviewDialog from './components/TmsPreviewDialog.jsx';
 
+// Leaflet CSS global importieren
+import 'leaflet/dist/leaflet.css';
+
 const API = '/api'
 
 function App() {

@@ -85,10 +85,10 @@ function Map({ files = [], onDeleteLayer }) {
     setSelected(layerId)
   }
 
-  return (
-    <>
+return (
+    <div className="h-full flex flex-col">
       {/* Layer Controls */}
-      <div className="mb-4 bg-white rounded-lg shadow-sm border p-4">
+      <div className="bg-white rounded-lg shadow-sm border p-4 mb-4 flex-shrink-0">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-64">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -193,7 +193,7 @@ function Map({ files = [], onDeleteLayer }) {
       </div>
 
       {/* Map Container */}
-      <div className="flex-1 bg-white rounded-lg shadow-sm border overflow-hidden" style={{ minHeight: '500px' }}>
+      <div className="flex-1 bg-white rounded-lg shadow-sm border overflow-hidden">
         <MapContainer 
           center={[47.3769, 8.5417]} 
           zoom={13} 
@@ -231,14 +231,14 @@ function Map({ files = [], onDeleteLayer }) {
       </div>
       
       {/* Status Bar */}
-      <div className="mt-2 text-sm text-gray-500 text-center">
+      <div className="mt-2 text-sm text-gray-500 text-center flex-shrink-0">
         {layers.length > 0 ? 
           `${layers.length} TMS-Layer verfügbar` : 
           'Keine TMS-Layer gefunden'
         }
         {selectedLayer && ` • Aktiver Layer: ${selectedLayer.fileName || selectedLayer.name || selectedLayer.id}`}
       </div>
-    </>
+    </div>
   )
 }
 
