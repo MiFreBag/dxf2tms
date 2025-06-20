@@ -329,24 +329,26 @@ def get_pdf_metadata(pdf_path: str):
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_token)):
-    """DXF Datei hochladen"""
+    """DXF oder TIF/GeoTIFF Datei hochladen"""
     try:
         logger.info("Upload-Endpoint aufgerufen")
         logger.debug(f"Benutzer: {user}")
         logger.debug(f"Dateiname: {file.filename}")
 
-        # Dateivalidierung
-        if not file.filename.lower().endswith('.dxf'):
-            logger.warning("Ungültige Dateiendung")
-            raise HTTPException(status_code=400, detail="Only DXF files are allowed")
+        # Dateivalidierung: Erlaube DXF und TIF/GeoTIFF
+        allowed_ext = ['.dxf', '.tif', '.tiff', '.geotiff']
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in allowed_ext:
+            logger.warning(f"Ungültige Dateiendung: {ext}")
+            raise HTTPException(status_code=400, detail="Only DXF and TIF/GeoTIFF files are allowed")
 
         file_id = str(uuid.uuid4())
-        dxf_path = os.path.join(UPLOAD_DIR, f"{file_id}.dxf")
+        save_path = os.path.join(UPLOAD_DIR, f"{file_id}{ext}")
 
         # Datei speichern
         content = await file.read()
         logger.debug(f"Dateigröße: {len(content)} Bytes")
-        with open(dxf_path, "wb") as f:
+        with open(save_path, "wb") as f:
             f.write(content)
 
         # Metadaten in SQLite speichern
@@ -354,11 +356,11 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO files (id, name, path, size, converted, uploaded_at, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (file_id, file.filename, dxf_path, len(content), False, datetime.utcnow().isoformat(), user)
+                (file_id, file.filename, save_path, len(content), False, datetime.utcnow().isoformat(), user)
             )
 
         logger.info(f"Datei erfolgreich hochgeladen: {file.filename} (ID: {file_id})")
-        return {"id": file_id, "name": file.filename, "path": dxf_path, "size": len(content), "converted": False, "uploaded_at": datetime.utcnow().isoformat(), "uploaded_by": user}
+        return {"id": file_id, "name": file.filename, "path": save_path, "size": len(content), "converted": False, "uploaded_at": datetime.utcnow().isoformat(), "uploaded_by": user}
 
     except Exception as e:
         logger.error(f"Upload fehlgeschlagen: {e}")
