@@ -43,7 +43,12 @@ from system_metrics import (
 # Am Anfang der main.py, bei den anderen Imports ergänzen:
 from controllers.jobController import get_all_jobs, jobs_db, thread_lock
 from routes.jobRoutes import router as job_router
-from routes.filebrowser_routes import router as filebrowser_router  # NEU: FileBrowser Router importieren
+try:
+    from routes.filebrowser_routes import router as filebrowser_router
+except ModuleNotFoundError:
+    logger.error("Module 'routes.filebrowser_routes' not found. File browser functionality will be unavailable.")
+    logger.error("Please ensure 'server/routes/filebrowser_routes.py' and 'server/routes/__init__.py' exist.")
+    filebrowser_router = None # Fallback, so app doesn't crash if router is used later without check
 
 # Logging konfigurieren
 logging.basicConfig(level=logging.INFO)
@@ -1134,7 +1139,10 @@ async def system_health():
             "timestamp": datetime.now().isoformat()
         }
 app.include_router(job_router, prefix="/api/jobs")
-app.include_router(filebrowser_router, prefix="/api/filebrowser")  # NEU: FileBrowser Router registrieren
+if filebrowser_router:
+    app.include_router(filebrowser_router, prefix="/api/filebrowser")
+else:
+    logger.warning("FileBrowser router not loaded due to missing module.")
 
 if __name__ == "__main__":
     import uvicorn
