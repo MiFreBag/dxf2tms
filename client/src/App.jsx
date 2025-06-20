@@ -808,6 +808,11 @@ function App() {
             <ServiceTaskManager services={dockerServicesData} />
           )}
 
+// App.jsx - Fixes für die Syntax-Fehler
+
+// 1. Fix für den JSX-Syntax-Fehler bei Zeile 850
+// Ersetzen Sie diese Zeilen:
+
 {page === 'container-monitor' && (
   <div className="h-full">
     <div className="mb-6">
@@ -847,11 +852,8 @@ function App() {
     />
   </div>
 )}
-)}
 
-
-
-          {page === 'api-docs' && (
+       {page === 'api-docs' && (
             <div className="h-full">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">OpenAPI Spezifikation</h2>
@@ -862,7 +864,7 @@ function App() {
               </div>
             </div>
           )}
-
+          
         {/* Blobstore-Modal */}
         {showBlobstore && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">

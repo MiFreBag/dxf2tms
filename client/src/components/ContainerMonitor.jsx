@@ -10,7 +10,7 @@ import {
   FaMicrochip, 
   FaMemory,
   FaChartLine,
-  FaRefresh
+  FaSync // FaRefresh existiert nicht, verwenden FaSync
 } from 'react-icons/fa';
 
 const ContainerMonitor = ({ 
@@ -277,7 +277,7 @@ const ContainerMonitor = ({
               disabled={isLoadingMetrics}
               className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
             >
-              <FaRefresh className={isLoadingMetrics ? 'animate-spin' : ''} />
+              <FaSync className={isLoadingMetrics ? 'animate-spin' : ''} />
               Refresh
             </button>
           )}
