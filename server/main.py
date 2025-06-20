@@ -23,6 +23,7 @@ import sqlite3
 # Import der DXF- und Raster-Konvertierungsfunktionen
 from convert_dxf_to_geopdf import dxf_to_geopdf, convert_pdf_to_tms
 from convert_raster_to_geopdf import raster_to_geopdf
+from controllers.jobController import get_all_jobs
 
 # Logging konfigurieren
 logging.basicConfig(level=logging.INFO)
@@ -747,6 +748,11 @@ async def cleanup_files(days: int = 7, status: str = "error"):
             cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
         deleted += 1
     return {"deleted": deleted, "status": status, "older_than": days}
+
+@app.get("/api/jobs")
+async def api_get_jobs():
+    """Gibt alle Jobs für das Frontend zurück (ServiceTaskManager)"""
+    return get_all_jobs()
 
 if __name__ == "__main__":
     import uvicorn
