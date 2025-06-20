@@ -92,9 +92,12 @@ function App() {
   };
 
   // Fetch initial data
-  const fetchFiles = useCallback(async () => {
+  const fetchFiles = useCallback(async (showAll = true) => {
     try {
-      const response = await fetch(`${API}/files`, {
+      let url = `${API}/files`;
+      // Wenn showAll false ist, filtere nach aktuellem User (optional)
+      // if (!showAll && user) url += `?uploaded_by=${user}`;
+      const response = await fetch(url, {
         headers: {
             'Authorization': `Bearer ${token}`,
         },
