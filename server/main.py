@@ -28,31 +28,32 @@ from controllers.jobController import get_all_jobs, jobs_db, thread_lock
 from routes.jobRoutes import router as job_router
 import threading
 
-# Integration in main.py - Fügen Sie diese Imports und Endpunkte hinzu
+# Logging konfigurieren - FRÜHER DEFINIEREN
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+# Integration in main.py - Fügen Sie diese Imports und Endpunkte hinzu
 # Am Anfang der Datei zu den bestehenden Imports hinzufügen:
 from system_metrics import (
     get_system_metrics,
     get_cpu_metrics, 
     get_memory_metrics,
     get_disk_metrics,
-    get_network_metrics,
+    get_network_metrics, # metrics_collector wird bereits in system_metrics.py instanziiert
     metrics_collector
 )
 
 # Am Anfang der main.py, bei den anderen Imports ergänzen:
 from controllers.jobController import get_all_jobs, jobs_db, thread_lock
 from routes.jobRoutes import router as job_router
-try:
+import importlib.util
+filebrowser_router = None
+filebrowser_routes_spec = importlib.util.find_spec("routes.filebrowser_routes")
+if filebrowser_routes_spec is not None:
     from routes.filebrowser_routes import router as filebrowser_router
-except ModuleNotFoundError:
+else:
     logger.error("Module 'routes.filebrowser_routes' not found. File browser functionality will be unavailable.")
     logger.error("Please ensure 'server/routes/filebrowser_routes.py' and 'server/routes/__init__.py' exist.")
-    filebrowser_router = None # Fallback, so app doesn't crash if router is used later without check
-
-# Logging konfigurieren
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Konfiguration
 UPLOAD_DIR = "uploads"
@@ -974,7 +975,7 @@ async def docker_metrics(user: str = Depends(verify_token)):
     """Docker-spezifische Metriken abrufen"""
     try:
         return metrics_collector.get_docker_metrics()
-    except Exception as e:
+    except Exception as e: # metrics_collector ist bereits in system_metrics.py definiert
         logger.error(f"Error fetching Docker metrics: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch Docker metrics: {str(e)}")
 
