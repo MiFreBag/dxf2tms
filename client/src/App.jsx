@@ -213,19 +213,37 @@ function App() {
     }
   }
 
-  const handleDownload = (file) => {
+  const handleDownload = async (file) => {
     console.info('Download-Klick:', file);
     if (file.converted) {
-      const url = `/api/download/${file.id}`;
       setProgress(prev => ({ ...prev, [file.id]: 'downloading' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = file.name.replace(/\.[^/.]+$/, '') + '_converted.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setProgress(prev => ({ ...prev, [file.id]: 'done' }));
-      addMessage('Download gestartet', 'success');
+      try {
+        const response = await fetch(`/api/download/${file.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) {
+          addMessage('Download fehlgeschlagen: ' + response.status, 'error');
+          setProgress(prev => ({ ...prev, [file.id]: 'error' }));
+          return;
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name.replace(/\.[^/.]+$/, '') + '_converted.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        setProgress(prev => ({ ...prev, [file.id]: 'done' }));
+        addMessage('Download gestartet', 'success');
+      } catch (error) {
+        addMessage('Download-Fehler: ' + error, 'error');
+        setProgress(prev => ({ ...prev, [file.id]: 'error' }));
+        console.error('Download-Fehler:', error);
+      }
     } else {
       addMessage('Download nicht verfügbar', 'error');
       console.warn('Download nicht verfügbar:', file);
