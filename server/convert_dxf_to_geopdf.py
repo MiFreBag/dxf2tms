@@ -374,14 +374,16 @@ def convert_dxf_to_geopdf(dxf_path: str, pdf_path: str) -> None:
 
 def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: int = 6) -> bool:
     """
-    Konvertiert ein GeoPDF in einen TMS-Ordner (Tiles) mit gdal2tiles.py
+    Konvertiert ein GeoPDF in einen TMS-Ordner (Tiles) mit gdal2tiles
     """
     import subprocess
     try:
         if not os.path.exists(tms_dir):
             os.makedirs(tms_dir)
+        # Statt python -m gdal2tiles: direkt das CLI-Skript aufrufen
+        gdal2tiles_bin = '/opt/venv/bin/gdal2tiles' if os.path.exists('/opt/venv/bin/gdal2tiles') else 'gdal2tiles'
         cmd = [
-            sys.executable, '-m', 'gdal2tiles',
+            gdal2tiles_bin,
             '-z', f'{minzoom}-{maxzoom}',
             '-r', 'bilinear',
             '-w', 'none',
