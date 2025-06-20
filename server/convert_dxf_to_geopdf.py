@@ -9,7 +9,8 @@ try:
     from qgis.core import (
         QgsApplication, QgsProject, QgsVectorLayer, QgsPrintLayout, QgsLayoutItemMap,
         QgsLayoutExporter, QgsLayoutPoint, QgsLayoutSize, QgsUnitTypes, QgsLineSymbol,
-        QgsFillSymbol, QgsMarkerSymbol, QgsCoordinateReferenceSystem, QgsLayoutItem,
+        QgsFillSymbol, QgsMarkerSymbol, QgsCoordinateReferenceSystem, QgsSingleSymbolRenderer, # Added QgsSingleSymbolRenderer
+        QgsLayoutItem,
         QgsLayoutItemLabel, QgsLayoutItemScaleBar, QgsLayoutItemLegend
     )
     from qgis.PyQt.QtCore import QSizeF
@@ -126,7 +127,8 @@ class DXFToGeoPDFConverter:
         """
         try:
             geometry_type = layer.geometryType()
-            
+            symbol = None
+
             if geometry_type == 1:  # Line geometry
                 symbol = QgsLineSymbol.createSimple({
                     "color": line_color,
@@ -135,7 +137,6 @@ class DXFToGeoPDFConverter:
                     "capstyle": "round",
                     "joinstyle": "round"
                 })
-                layer.renderer().setSymbol(symbol)
                 logger.info(f"Applied line symbolization to layer: {layer.name()}")
                 
             elif geometry_type == 2:  # Polygon geometry
@@ -146,7 +147,6 @@ class DXFToGeoPDFConverter:
                     "style": "solid",
                     "outline_style": "solid"
                 })
-                layer.renderer().setSymbol(symbol)
                 logger.info(f"Applied polygon symbolization to layer: {layer.name()}")
                 
             elif geometry_type == 0:  # Point geometry
@@ -157,9 +157,12 @@ class DXFToGeoPDFConverter:
                     "outline_color": line_color,
                     "outline_width": "0.2"
                 })
-                layer.renderer().setSymbol(symbol)
                 logger.info(f"Applied point symbolization to layer: {layer.name()}")
             
+            if symbol:
+                renderer = QgsSingleSymbolRenderer(symbol)
+                layer.setRenderer(renderer)
+
             # Layer neu zeichnen
             layer.triggerRepaint()
             
