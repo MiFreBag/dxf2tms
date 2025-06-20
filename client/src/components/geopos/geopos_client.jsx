@@ -23,7 +23,6 @@ import {
   Navigation,
   RefreshCw
 } from 'lucide-react'
-import { swissToWgs84, wgs84ToSwiss, formatCoordinates, isValidSwissGrid } from '../utils/coordinates'
 
 const API = '/api'
 
