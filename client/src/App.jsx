@@ -388,7 +388,7 @@ function App() {
   // Navigation items
   const navItems = [
     { id: 'upload', label: 'Upload & Convert', icon: Upload },
-    { id: 'map', label: 'Kartenansicht', icon: MapPin },
+    { id: 'map', label: 'Kartenansicht', icon: MapPin }, // MapPin statt Map
     { id: 'n8n', label: 'n8n Workflow', icon: Layers },
     { id: 'service-task-manager', label: 'Service Task Manager', icon: Layers },
     { id: 'container-monitor', label: 'Container Monitor', icon: Layers },
