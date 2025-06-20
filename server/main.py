@@ -18,6 +18,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from osgeo import gdal
 from docker import from_env
+import sqlite3
 
 # Import der DXF-Konvertierungsfunktion
 from convert_dxf_to_geopdf import dxf_to_geopdf
@@ -79,8 +80,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# File storage (in production use database)
-files: Dict[str, Dict[str, Any]] = {}
+# SQLite-Datenbank initialisieren
+DB_PATH = "files.db"
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+cursor = conn.cursor()
+
+# Tabelle erstellen
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS files (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    path TEXT,
+    size INTEGER,
+    converted BOOLEAN,
+    uploaded_at TEXT,
+    uploaded_by TEXT
+)
+""")
+conn.commit()
 
 # Verzeichnisse erstellen
 for directory in [UPLOAD_DIR, OUTPUT_DIR, STATIC_ROOT, TEMPLATES_DIR]:
@@ -304,19 +321,15 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
         with open(dxf_path, "wb") as f:
             f.write(content)
 
-        # File info speichern
-        files[file_id] = {
-            "id": file_id,
-            "name": file.filename,
-            "path": dxf_path,  # Pfad hinzufügen
-            "size": len(content),
-            "converted": False,
-            "uploaded_at": datetime.utcnow().isoformat(),
-            "uploaded_by": user
-        }
+        # Metadaten in SQLite speichern
+        cursor.execute(
+            "INSERT INTO files (id, name, path, size, converted, uploaded_at, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (file_id, file.filename, dxf_path, len(content), False, datetime.utcnow().isoformat(), user)
+        )
+        conn.commit()
 
         logger.info(f"Datei erfolgreich hochgeladen: {file.filename} (ID: {file_id})")
-        return files[file_id]
+        return {"id": file_id, "name": file.filename, "path": dxf_path, "size": len(content), "converted": False, "uploaded_at": datetime.utcnow().isoformat(), "uploaded_by": user}
 
     except Exception as e:
         logger.error(f"Upload fehlgeschlagen: {e}")
@@ -325,7 +338,25 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
 @app.get("/files")
 async def list_files(user: str = Depends(verify_token)):
     """Alle hochgeladenen Dateien auflisten"""
-    return list(files.values())
+    try:
+        cursor.execute("SELECT * FROM files")
+        rows = cursor.fetchall()
+        files = [
+            {
+                "id": row[0],
+                "name": row[1],
+                "path": row[2],
+                "size": row[3],
+                "converted": bool(row[4]),
+                "uploaded_at": row[5],
+                "uploaded_by": row[6]
+            }
+            for row in rows
+        ]
+        return files
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Dateien: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Dateien")
 
 @app.get("/tms")
 async def list_tms():
@@ -359,21 +390,22 @@ async def convert_file(file_id: str, user: str = Depends(verify_token)):
     """DXF zu GeoPDF konvertieren"""
     try:
         # Datei suchen
-        file_info = files.get(file_id)
-        if not file_info:
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
+        if not row:
             raise HTTPException(status_code=404, detail="File not found")
 
-        dxf_path = file_info["path"]
+        dxf_path = row[2]
         geopdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
 
         # Konvertierung durchführen
         dxf_to_geopdf(dxf_path, geopdf_path)
 
         # Datei als konvertiert markieren
-        file_info["converted"] = True
-        file_info["geopdf_path"] = geopdf_path
+        cursor.execute("UPDATE files SET converted = ?, path = ? WHERE id = ?", (True, geopdf_path, file_id))
+        conn.commit()
 
-        return {"message": "File converted successfully", "fileName": file_info["name"]}
+        return {"message": "File converted successfully", "fileName": row[1]}
     except Exception as e:
         logger.error(f"Error converting file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Conversion failed")
@@ -395,31 +427,27 @@ async def download_file(file_id: str, user: str = Depends(verify_token)):
 async def delete_file(file_id: str, user: str = Depends(verify_token)):
     """Datei löschen"""
     try:
-        logger.info(f"Lösch-Endpoint aufgerufen für Datei-ID: {file_id}")
-        info = files.get(file_id)
-        if not info:
-            logger.warning(f"Datei mit ID {file_id} nicht gefunden")
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
+        if not row:
             raise HTTPException(status_code=404, detail="File not found")
 
         # Dateien löschen
-        dxf_path = os.path.join(UPLOAD_DIR, f"{file_id}.dxf")
+        dxf_path = row[2]
         pdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
 
         for path in [dxf_path, pdf_path]:
             if os.path.exists(path):
-                logger.debug(f"Lösche Datei: {path}")
                 os.remove(path)
-            else:
-                logger.warning(f"Datei nicht gefunden: {path}")
 
-        # Aus Memory entfernen
-        del files[file_id]
+        # Aus Datenbank entfernen
+        cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
+        conn.commit()
 
-        logger.info(f"Datei erfolgreich gelöscht: {file_id}")
+        logger.info(f"File deleted: {file_id}")
         return {"message": "File deleted successfully"}
-
     except Exception as e:
-        logger.error(f"Löschen fehlgeschlagen für Datei-ID {file_id}: {e}")
+        logger.error(f"Delete failed for {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Delete failed")
 
 @app.get("/containers")
