@@ -13,6 +13,11 @@ RUN apt-get update && apt-get install -y \
     curl \
   && rm -rf /var/lib/apt/lists/*
 
+# Überprüfen, ob gdal2tiles.py installiert ist und im PATH liegt
+RUN echo "Überprüfe gdal2tiles.py..." \
+ && which gdal2tiles.py \
+ && gdal2tiles.py --help
+
 # QGIS-Umgebungsvariablen
 ENV QGIS_PREFIX_PATH=/usr \
     QT_QPA_PLATFORM=offscreen \
