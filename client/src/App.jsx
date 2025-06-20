@@ -18,6 +18,7 @@ import Map from './components/Map.jsx' // Import der Map Komponente
 import ServiceTaskManager from './components/ServiceTaskManager.jsx';
 import ContainerMonitor from './components/ContainerMonitor.jsx';
 import Login from './components/Login';
+import TmsPreviewDialog from './components/TmsPreviewDialog.jsx';
 
 const API = '/api'
 
@@ -48,6 +49,10 @@ function App() {
 
   // State für API-Dokumentation
   const [showApiDocs, setShowApiDocs] = useState(false);
+
+  // State für TMS-Preview-Dialog
+  const [showTmsPreviewDialog, setShowTmsPreviewDialog] = useState(false);
+  const [tmsPreviewFile, setTmsPreviewFile] = useState(null);
 
   // addMessage muss VOR allen useCallback-Hooks stehen, die es als Abhängigkeit nutzen!
   const addMessage = useCallback((text, type = 'info') => {
@@ -696,6 +701,13 @@ function App() {
                                         <Layers className="w-3 h-3" />
                                         TMS erzeugen
                                       </button>
+                                      <button
+                                        onClick={() => { setTmsPreviewFile(file); setShowTmsPreviewDialog(true); }}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md transition-colors"
+                                      >
+                                        <MapPin className="w-3 h-3" />
+                                        TMS Vorschau
+                                      </button>
                                     </div>
                                   )}
                                   <button 
@@ -896,6 +908,11 @@ function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* TMS-Preview-Dialog */}
+        {showTmsPreviewDialog && tmsPreviewFile && (
+          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
         )}
         </main>
       </div>
