@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 
 import jwt
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Query
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
@@ -679,6 +679,18 @@ async def get_container_status(user: str = Depends(verify_token)):
         import traceback
         logger.error(f"Fehler beim Abrufen des Container-Status: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen des Container-Status")
+
+@app.get("/containers/{container_id}/logs", response_class=PlainTextResponse)
+async def get_container_logs(container_id: str, user: str = Depends(verify_token)):
+    """Logs eines Docker-Containers abrufen"""
+    try:
+        client = from_env()
+        container = client.containers.get(container_id)
+        logs = container.logs(tail=200, stdout=True, stderr=True)
+        return logs.decode("utf-8", errors="replace")
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Logs für Container {container_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Fehler beim Abrufen der Logs: {e}")
 
 @app.get("/openapi.json", include_in_schema=False)
 def get_openapi_json():
