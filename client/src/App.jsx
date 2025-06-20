@@ -34,6 +34,10 @@ function App() {
   // Fortschrittsanzeige-Status
   const [progress, setProgress] = useState({});
 
+  // Neue States für Konvertierungsparameter und Dialog
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [convertParams, setConvertParams] = useState({ file: null, pageSize: 'A4', dpi: 300 });
+
   // Fetch initial data
   const fetchFiles = useCallback(async () => {
     try {
@@ -123,16 +127,26 @@ function App() {
     }
 };
 
-  const handleConvert = async (file) => {
+  const openConvertDialog = (file) => {
+    setConvertParams({ file, pageSize: 'A4', dpi: 300 });
+    setShowConvertDialog(true);
+  };
+
+  const handleConvert = async (file, pageSize = 'A4', dpi = 300) => {
     if (convertingFiles.has(file.id)) return
 
     setConvertingFiles(prev => new Set([...prev, file.id]))
+    setShowConvertDialog(false)
     
     try {
-      const response = await fetch(`${API}/convert/${file.id}`, {
+      const params = new URLSearchParams({ page_size: pageSize, dpi: dpi });
+      const response = await fetch(`${API}/convert/${file.id}?${params.toString()}`, {
         method: 'POST',
-      })
-      
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
       if (response.ok) {
         addMessage(`${file.name} erfolgreich konvertiert`, 'success')
         await fetchFiles()
@@ -568,7 +582,7 @@ function App() {
                                 <div className="flex items-center gap-2">
                                   {!file.converted && (
                                     <button 
-                                      onClick={() => handleConvertDXFToGeoPDF(file.id)}
+                                      onClick={() => openConvertDialog(file)}
                                       className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
                                     >
                                       <Upload className="w-3 h-3" />
@@ -652,6 +666,41 @@ function App() {
           )}
         </main>
       </div>
+
+      {/* Dialog für Konvertierungsparameter */}
+      {showConvertDialog && (
+  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg shadow-lg p-6 w-80">
+      <h2 className="text-lg font-bold mb-4">Konvertierungsoptionen</h2>
+      <div className="mb-3">
+        <label className="block text-sm font-medium">Seitengröße</label>
+        <select
+          className="w-full border rounded px-2 py-1"
+          value={convertParams.pageSize}
+          onChange={e => setConvertParams(p => ({ ...p, pageSize: e.target.value }))}
+        >
+          <option value="A4">A4</option>
+          <option value="A3">A3</option>
+        </select>
+      </div>
+      <div className="mb-3">
+        <label className="block text-sm font-medium">DPI</label>
+        <input
+          type="number"
+          min="72"
+          max="1200"
+          className="w-full border rounded px-2 py-1"
+          value={convertParams.dpi}
+          onChange={e => setConvertParams(p => ({ ...p, dpi: e.target.value }))}
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setShowConvertDialog(false)}>Abbrechen</button>
+        <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={() => handleConvert(convertParams.file, convertParams.pageSize, convertParams.dpi)}>Konvertieren</button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   )
 }

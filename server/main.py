@@ -442,8 +442,13 @@ async def get_file_details(file_id: str, user: str = Depends(verify_token)):
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Dateidetails")
 
 @app.post("/convert/{file_id}")
-async def convert_file(file_id: str, user: str = Depends(verify_token)):
-    """DXF zu GeoPDF konvertieren und Metadaten speichern"""
+async def convert_file(
+    file_id: str,
+    user: str = Depends(verify_token),
+    page_size: str = "A4",
+    dpi: int = 300
+):
+    """DXF zu GeoPDF konvertieren und Metadaten speichern (mit Parametern)"""
     try:
         with conn:
             cursor = conn.cursor()
@@ -457,19 +462,18 @@ async def convert_file(file_id: str, user: str = Depends(verify_token)):
         dxf_path = row[2]
         geopdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
         try:
-            # Konvertierung und Metadaten extrahieren
             bbox, layer_info = None, None
             try:
-                result = dxf_to_geopdf(dxf_path, geopdf_path, return_metadata=True)
+                result = dxf_to_geopdf(dxf_path, geopdf_path, page_size=page_size, dpi=dpi, return_metadata=True)
                 if isinstance(result, dict):
                     bbox = result.get('bbox')
                     layer_info = result.get('layer_info')
             except TypeError:
-                dxf_to_geopdf(dxf_path, geopdf_path)
+                dxf_to_geopdf(dxf_path, geopdf_path, page_size=page_size, dpi=dpi)
             with conn:
                 cursor = conn.cursor()
                 cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ? WHERE id = ?", (True, geopdf_path, "converted", bbox, layer_info, file_id))
-            return {"message": "File converted successfully", "fileName": row[1]}
+            return {"message": "File converted successfully", "fileName": row[1], "page_size": page_size, "dpi": dpi}
         except Exception as e:
             with conn:
                 cursor = conn.cursor()
