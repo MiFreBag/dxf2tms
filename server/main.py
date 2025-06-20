@@ -397,8 +397,20 @@ async def list_files(
         cursor = db.cursor()
         cursor.execute(query, tuple(params))
         rows = cursor.fetchall()
-        files = [
-            {
+        files = []
+        for row in rows:
+            bbox = row[9] if len(row) > 9 else None
+            layer_info = row[10] if len(row) > 10 else None
+            # Deserialisierung
+            try:
+                bbox = json.loads(bbox) if bbox else None
+            except Exception:
+                pass
+            try:
+                layer_info = json.loads(layer_info) if layer_info else None
+            except Exception:
+                pass
+            files.append({
                 "id": row[0],
                 "name": row[1],
                 "path": row[2],
@@ -408,12 +420,10 @@ async def list_files(
                 "uploaded_by": row[6],
                 "status": row[7] if len(row) > 7 else 'uploaded',
                 "error_message": row[8] if len(row) > 8 else None,
-                "bbox": row[9] if len(row) > 9 else None,
-                "layer_info": row[10] if len(row) > 10 else None,
+                "bbox": bbox,
+                "layer_info": layer_info,
                 "srs": row[11] if len(row) > 11 else None
-            }
-            for row in rows
-        ]
+            })
         return files
     except Exception as e:
         logger.error(f"Fehler beim Abrufen der Dateien: {e}")
@@ -428,7 +438,16 @@ async def get_file_details(file_id: str, user: str = Depends(verify_token), db: 
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
-
+        bbox = row[9] if len(row) > 9 else None
+        layer_info = row[10] if len(row) > 10 else None
+        try:
+            bbox = json.loads(bbox) if bbox else None
+        except Exception:
+            pass
+        try:
+            layer_info = json.loads(layer_info) if layer_info else None
+        except Exception:
+            pass
         file_details = {
             "id": row[0],
             "name": row[1],
@@ -439,8 +458,8 @@ async def get_file_details(file_id: str, user: str = Depends(verify_token), db: 
             "uploaded_by": row[6],
             "status": row[7] if len(row) > 7 else 'uploaded',
             "error_message": row[8] if len(row) > 8 else None,
-            "bbox": row[9] if len(row) > 9 else None,
-            "layer_info": row[10] if len(row) > 10 else None,
+            "bbox": bbox,
+            "layer_info": layer_info,
             "srs": row[11] if len(row) > 11 else None
         }
 
@@ -484,7 +503,10 @@ async def convert_file(
                 raster_to_geopdf(input_path, geopdf_path, dpi=dpi, page_size=page_size)
             else:
                 raise HTTPException(status_code=400, detail="Unsupported file type for conversion")
-            cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ?, srs = ? WHERE id = ?", (True, geopdf_path, "converted", bbox, layer_info, srs, file_id))
+            # Serialisierung vor dem Speichern
+            bbox_str = json.dumps(bbox) if bbox is not None else None
+            layer_info_str = json.dumps(layer_info) if layer_info is not None else None
+            cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ?, srs = ? WHERE id = ?", (True, geopdf_path, "converted", bbox_str, layer_info_str, srs, file_id))
             db.commit()
             return {"message": "File converted successfully", "fileName": row[1], "page_size": page_size, "dpi": dpi, "bbox": bbox, "srs": srs}
         except Exception as e:

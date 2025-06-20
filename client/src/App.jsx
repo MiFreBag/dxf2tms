@@ -41,7 +41,7 @@ function App() {
 
   // State für TMS-Dialog
   const [showTmsDialog, setShowTmsDialog] = useState(false);
-  const [tmsParams, setTmsParams] = useState({ file: null, maxzoom: 6 });
+  const [tmsParams, setTmsParams] = useState({ file: null, maxzoom: 20 });
 
   // addMessage muss VOR allen useCallback-Hooks stehen, die es als Abhängigkeit nutzen!
   const addMessage = useCallback((text, type = 'info') => {
@@ -54,12 +54,12 @@ function App() {
 
   // Handler für TMS-Dialog öffnen
   const handleOpenTmsDialog = (file) => {
-    setTmsParams({ file, maxzoom: 6 });
+    setTmsParams({ file, maxzoom: 20 });
     setShowTmsDialog(true);
   };
 
   // Handler für TMS-Erstellung
-  const handleCreateTms = async (file, maxzoom = 6) => {
+  const handleCreateTms = async (file, maxzoom = 20) => {
     setShowTmsDialog(false);
     try {
       const response = await fetch(`${API}/tms/${file.id}?maxzoom=${maxzoom}`, {
