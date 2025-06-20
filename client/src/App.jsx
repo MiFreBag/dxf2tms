@@ -721,8 +721,12 @@ function App() {
           value={convertParams.pageSize}
           onChange={e => setConvertParams(p => ({ ...p, pageSize: e.target.value }))}
         >
-          <option value="A4">A4</option>
+          <option value="A0">A0</option>
+          <option value="A1">A1</option>
+          <option value="A2">A2</option>
           <option value="A3">A3</option>
+          <option value="A4">A4</option>
+          <option value="A5">A5</option>
         </select>
       </div>
       <div className="mb-3">

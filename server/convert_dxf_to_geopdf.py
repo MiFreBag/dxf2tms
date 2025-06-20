@@ -199,14 +199,26 @@ class DXFToGeoPDFConverter:
             map_item = QgsLayoutItemMap(layout)
             
             # Seitengröße bestimmen
-            if page_size.upper() == "A4":
-                page_width, page_height = 210, 297  # mm
-                map_margins = 10
+            page_sizes = {
+                "A0": (841, 1189),
+                "A1": (594, 841),
+                "A2": (420, 594),
+                "A3": (297, 420),
+                "A4": (210, 297),
+                "A5": (148, 210),
+            }
+            size = page_sizes.get(page_size.upper(), (210, 297))
+            page_width, page_height = size
+            # Dynamische Ränder je nach Größe
+            if page_size.upper() == "A0":
+                map_margins = 40
+            elif page_size.upper() == "A1":
+                map_margins = 30
+            elif page_size.upper() == "A2":
+                map_margins = 25
             elif page_size.upper() == "A3":
-                page_width, page_height = 297, 420  # mm
                 map_margins = 15
             else:
-                page_width, page_height = 210, 297  # Default A4
                 map_margins = 10
             
             # Kartenbereich definieren
@@ -226,7 +238,7 @@ class DXFToGeoPDFConverter:
             if add_elements:
                 self._add_layout_elements(layout, map_item, layer, page_width)
             
-            logger.info(f"Print layout created: {layout_name}")
+            logger.info(f"Print layout created: {layout_name} ({page_size})")
             
             return layout
             
