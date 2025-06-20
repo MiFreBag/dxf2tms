@@ -49,23 +49,16 @@ function Toast({ message, type, onClose }) {
 }
 
 // Werkzeug-Button Komponente
-function ToolButton({ name, icon: Icon, active, onClick, disabled = false }) {
+function ToolButton({ name, active, onClick, disabled = false }) {
   return (
     <button
-      onClick={() => onClick(name)}
+      className={`tool-button ${active ? 'active' : ''}`}
+      onClick={onClick}
       disabled={disabled}
-      className={`
-        p-2 rounded-lg border transition-all duration-200 flex items-center justify-center
-        ${active 
-          ? 'bg-blue-500 text-white border-blue-600 shadow-md' 
-          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-        }
-        ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-sm'}
-      `}
     >
-      <Icon className="w-5 h-5" />
+      {name}
     </button>
-  )
+  );
 }
 
 // Layer-Panel Komponente
@@ -387,14 +380,13 @@ function PropertiesPanel({ selectedObject, onPropertyChange, onSave }) {
     </div>
   )
 }
-}
 
 // Leaflet-Karte Komponente
 function LeafletMap({ objects, selectedObjects, onObjectClick, tool, onMapClick }) {
-  const mapRef = useRef(null)
-  const mapInstanceRef = useRef(null)
-  const markersRef = useRef({})
-  const [mapLoaded, setMapLoaded] = useState(false)
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef({});
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Leaflet initialisieren
   useEffect(() => {
