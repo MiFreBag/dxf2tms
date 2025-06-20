@@ -9,6 +9,7 @@ services:
       - ./server/uploads:/app/uploads
       - ./server/output:/app/output
       - ./server/templates:/app/templates
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
@@ -84,3 +85,4 @@ volumes:
   n8n_data:
   uploads:
   output:
+
