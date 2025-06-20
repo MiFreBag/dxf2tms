@@ -99,6 +99,16 @@ CREATE TABLE IF NOT EXISTS files (
 """)
 conn.commit()
 
+# Erweiterung der Tabelle um weitere Metadatenfelder
+cursor.execute("""
+ALTER TABLE files ADD COLUMN status TEXT DEFAULT 'uploaded'
+""")
+try:
+    cursor.execute("ALTER TABLE files ADD COLUMN error_message TEXT")
+except sqlite3.OperationalError:
+    pass  # Spalte existiert evtl. schon
+conn.commit()
+
 # Verzeichnisse erstellen
 for directory in [UPLOAD_DIR, OUTPUT_DIR, STATIC_ROOT, TEMPLATES_DIR]:
     os.makedirs(directory, exist_ok=True)
@@ -336,10 +346,13 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @app.get("/files")
-async def list_files(user: str = Depends(verify_token)):
-    """Alle hochgeladenen Dateien auflisten"""
+async def list_files(user: str = Depends(verify_token), status: str = None):
+    """Alle hochgeladenen Dateien auflisten, optional nach Status filtern"""
     try:
-        cursor.execute("SELECT * FROM files")
+        if status:
+            cursor.execute("SELECT * FROM files WHERE status = ?", (status,))
+        else:
+            cursor.execute("SELECT * FROM files")
         rows = cursor.fetchall()
         files = [
             {
@@ -349,7 +362,9 @@ async def list_files(user: str = Depends(verify_token)):
                 "size": row[3],
                 "converted": bool(row[4]),
                 "uploaded_at": row[5],
-                "uploaded_by": row[6]
+                "uploaded_by": row[6],
+                "status": row[7] if len(row) > 7 else 'uploaded',
+                "error_message": row[8] if len(row) > 8 else None
             }
             for row in rows
         ]
@@ -357,6 +372,58 @@ async def list_files(user: str = Depends(verify_token)):
     except Exception as e:
         logger.error(f"Fehler beim Abrufen der Dateien: {e}")
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Dateien")
+
+@app.get("/files/{file_id}")
+async def get_file_details(file_id: str, user: str = Depends(verify_token)):
+    """Details zu einer Datei abrufen"""
+    try:
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        file_details = {
+            "id": row[0],
+            "name": row[1],
+            "path": row[2],
+            "size": row[3],
+            "converted": bool(row[4]),
+            "uploaded_at": row[5],
+            "uploaded_by": row[6],
+            "status": row[7] if len(row) > 7 else 'uploaded',
+            "error_message": row[8] if len(row) > 8 else None
+        }
+
+        return file_details
+    except Exception as e:
+        logger.error(f"Fehler beim Abrufen der Dateidetails: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Dateidetails")
+
+@app.post("/convert/{file_id}")
+async def convert_file(file_id: str, user: str = Depends(verify_token)):
+    """DXF zu GeoPDF konvertieren"""
+    try:
+        cursor.execute("UPDATE files SET status = ? WHERE id = ?", ("converting", file_id))
+        conn.commit()
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="File not found")
+        dxf_path = row[2]
+        geopdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
+        try:
+            dxf_to_geopdf(dxf_path, geopdf_path)
+            cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL WHERE id = ?", (True, geopdf_path, "converted", file_id))
+            conn.commit()
+            return {"message": "File converted successfully", "fileName": row[1]}
+        except Exception as e:
+            cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
+            conn.commit()
+            logger.error(f"Error converting file {file_id}: {e}")
+            raise HTTPException(status_code=500, detail="Conversion failed")
+    except Exception as e:
+        logger.error(f"Error converting file {file_id}: {e}")
+        raise HTTPException(status_code=500, detail="Conversion failed")
 
 @app.get("/tms")
 async def list_tms():
@@ -385,11 +452,10 @@ async def list_tms():
         logger.error(f"Failed to list TMS layers: {e}")
         raise HTTPException(status_code=500, detail="Failed to list TMS layers")
 
-@app.post("/convert/{file_id}")
-async def convert_file(file_id: str, user: str = Depends(verify_token)):
-    """DXF zu GeoPDF konvertieren"""
+@app.post("/dxf2geopdf/{file_id}")
+async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token)):
+    """DXF zu GeoPDF Konvertierung auslösen"""
     try:
-        # Datei suchen
         cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
         row = cursor.fetchone()
         if not row:
@@ -402,11 +468,13 @@ async def convert_file(file_id: str, user: str = Depends(verify_token)):
         dxf_to_geopdf(dxf_path, geopdf_path)
 
         # Datei als konvertiert markieren
-        cursor.execute("UPDATE files SET converted = ?, path = ? WHERE id = ?", (True, geopdf_path, file_id))
+        cursor.execute("UPDATE files SET converted = ?, path = ?, status = ? WHERE id = ?", (True, geopdf_path, "converted", file_id))
         conn.commit()
 
         return {"message": "File converted successfully", "fileName": row[1]}
     except Exception as e:
+        cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
+        conn.commit()
         logger.error(f"Error converting file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Conversion failed")
 
