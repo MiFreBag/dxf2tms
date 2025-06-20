@@ -69,7 +69,7 @@ app = FastAPI(
     title="DXF to GeoPDF API",
     description="API for converting DXF files to GeoPDF using QGIS",
     version="1.0.0",
-    openapi_url="/openapi.json",
+    openapi_url="/api/openapi.json",
     docs_url=None,
 )
 
@@ -139,12 +139,12 @@ for directory in [UPLOAD_DIR, OUTPUT_DIR, STATIC_ROOT, TEMPLATES_DIR]:
 app.mount("/static", StaticFiles(directory=STATIC_ROOT), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.utcnow()}
 
-@app.get("/swagger", include_in_schema=False)
+@app.get("/api/swagger", include_in_schema=False)
 async def swagger_ui() -> HTMLResponse:
     """Swagger UI bereitstellen"""
     return get_swagger_ui_html(openapi_url=app.openapi_url, title=f"{app.title} - Swagger UI")
@@ -169,7 +169,7 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-@app.post("/login")
+@app.post("/api/login")
 async def login(credentials: dict):
     """Benutzer-Login"""
     try:
@@ -331,7 +331,7 @@ def get_pdf_metadata(pdf_path: str):
         logger.error(f"Failed to extract PDF metadata: {e}")
         raise
 
-@app.post("/upload")
+@app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """DXF oder TIF/GeoTIFF Datei hochladen"""
     try:
@@ -370,7 +370,7 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
         logger.error(f"Upload fehlgeschlagen: {e}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
-@app.get("/files")
+@app.get("/api/files")
 async def list_files(
     user: str = Depends(verify_token),
     status: str = None,
@@ -430,7 +430,7 @@ async def list_files(
         logger.error(f"Fehler beim Abrufen der Dateien: {e}")
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Dateien")
 
-@app.get("/files/{file_id}")
+@app.get("/api/files/{file_id}")
 async def get_file_details(file_id: str, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """Details zu einer Datei abrufen"""
     try:
@@ -469,7 +469,7 @@ async def get_file_details(file_id: str, user: str = Depends(verify_token), db: 
         logger.error(f"Fehler beim Abrufen der Dateidetails: {e}")
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Dateidetails")
 
-@app.post("/convert/{file_id}")
+@app.post("/api/convert/{file_id}")
 async def convert_file(
     file_id: str,
     user: str = Depends(verify_token),
@@ -519,7 +519,7 @@ async def convert_file(
         logger.error(f"Error converting file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Conversion failed")
 
-@app.post("/dxf2geopdf/{file_id}")
+@app.post("/api/dxf2geopdf/{file_id}")
 async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """DXF zu GeoPDF Konvertierung auslösen"""
     try:
@@ -546,7 +546,7 @@ async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token)
         logger.error(f"Error converting file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Conversion failed")
 
-@app.post("/tms/{file_id}")
+@app.post("/api/tms/{file_id}")
 async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """GeoPDF zu TMS (Tile Map Service) konvertieren"""
     try:
@@ -574,7 +574,7 @@ async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(v
         logger.error(f"TMS-Erstellung fehlgeschlagen: {e}")
         raise HTTPException(status_code=500, detail=f"TMS-Erstellung fehlgeschlagen: {e}")
 
-@app.get("/tms")
+@app.get("/api/tms")
 async def list_tms(db: sqlite3.Connection = Depends(get_db)):
     """Alle TMS Layer auflisten inkl. Metadaten"""
     layers = []
@@ -628,7 +628,7 @@ async def delete_tms_layer(tms_id: str, user: str = Depends(verify_token)):
         logger.error(f"Fehler beim Löschen des TMS-Layers {tms_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Fehler beim Löschen des TMS-Layers: {e}")
 
-@app.get("/download/{file_id}")
+@app.get("/api/download/{file_id}")
 async def download_file(file_id: str, request: Request, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """GeoPDF Datei herunterladen"""
     try:
@@ -654,7 +654,7 @@ async def download_file(file_id: str, request: Request, user: str = Depends(veri
         logger.error(f"Error downloading GeoPDF for file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Download failed")
 
-@app.delete("/files/{file_id}")
+@app.delete("/api/files/{file_id}")
 async def delete_file(file_id: str, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     try:
         cursor = db.cursor()
@@ -672,7 +672,7 @@ async def delete_file(file_id: str, user: str = Depends(verify_token), db: sqlit
         logger.error(f"Fehler beim Löschen der Datei: {e}")
         raise HTTPException(status_code=500, detail="Fehler beim Löschen der Datei")
 
-@app.get("/containers")
+@app.get("/api/containers")
 async def get_container_status(user: str = Depends(verify_token)):
     """Status aller Docker-Container (laufend & gestoppt), Images und Volumes abrufen"""
     try:
@@ -708,7 +708,7 @@ async def get_container_status(user: str = Depends(verify_token)):
         logger.error(f"Fehler beim Abrufen des Container-Status: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen des Container-Status")
 
-@app.get("/containers/{container_id}/logs", response_class=PlainTextResponse)
+@app.get("/api/containers/{container_id}/logs", response_class=PlainTextResponse)
 async def get_container_logs(container_id: str, user: str = Depends(verify_token)):
     """Logs eines Docker-Containers abrufen"""
     try:
@@ -720,17 +720,17 @@ async def get_container_logs(container_id: str, user: str = Depends(verify_token
         logger.error(f"Fehler beim Abrufen der Logs für Container {container_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Fehler beim Abrufen der Logs: {e}")
 
-@app.get("/openapi.json", include_in_schema=False)
+@app.get("/api/openapi.json", include_in_schema=False)
 def get_openapi_json():
     """OpenAPI-Schema bereitstellen"""
     return app.openapi()
 
-@app.get("/docs", include_in_schema=False)
+@app.get("/api/docs", include_in_schema=False)
 def get_docs():
     """Swagger UI bereitstellen"""
-    return get_swagger_ui_html(openapi_url="/openapi.json", title="DXF to GeoPDF API Docs")
+    return get_swagger_ui_html(openapi_url="/api/openapi.json", title="DXF to GeoPDF API Docs")
 
-@app.delete("/cleanup")
+@app.delete("/api/cleanup")
 async def cleanup_files(days: int = 7, status: str = "error"):
     """Automatische Bereinigung alter/gefehlerter Dateien"""
     import datetime
