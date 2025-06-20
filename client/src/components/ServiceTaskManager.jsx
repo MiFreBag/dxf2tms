@@ -1,6 +1,7 @@
 // ServiceTaskManager.jsx - Enhanced Job Management System
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
+  FaCog, // Docker Service Icon (from previous version, keeping for potential future use or if component is reused)
   FaUpload, 
   FaFilePdf, 
   FaLayerGroup, 
@@ -14,7 +15,8 @@ import {
   FaDownload, 
   FaEye, 
   FaTrash,
-  FaFileAlt,
+  FaFileAlt, // Default Job Icon
+  FaMicrochip, // Docker CPU Icon
   FaHistory,
   FaSpinner,
   FaLink
@@ -26,7 +28,8 @@ const jobTypeIcons = {
   'convert': FaFilePdf,
   'tms': FaLayerGroup,
   'download': FaDownload,
-  'default': FaFileAlt
+  'default': FaFileAlt,
+  'service': FaCog // Icon for Docker Services if needed later
 };
 
 // Job Status Colors and Icons
@@ -100,6 +103,7 @@ const formatDuration = (startTime, endTime) => {
 };
 
 const formatFileSize = (bytes) => {
+  if (bytes === null || bytes === undefined || isNaN(parseFloat(bytes))) return 'N/A';
   if (!bytes) return 'N/A';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -108,7 +112,7 @@ const formatFileSize = (bytes) => {
 };
 
 // Job Card Component
-const JobCard = ({ job, onCancel, onRetry, onDelete, onViewArtifacts }) => {
+const JobCard = ({ job, onCancel, onRetry, onDelete, onViewArtifacts, isProcessingAction }) => {
   const statusInfo = getJobStatusInfo(job.status);
   const TypeIcon = jobTypeIcons[job.type] || jobTypeIcons.default;
   const StatusIcon = statusInfo.icon;
@@ -131,7 +135,7 @@ const JobCard = ({ job, onCancel, onRetry, onDelete, onViewArtifacts }) => {
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <StatusIcon className={`${statusInfo.color} ${job.status === 'running' ? 'animate-spin' : ''}`} />
                 <span>{statusInfo.text}</span>
-                <span>•</span>
+                {job.id && <span>•</span>}
                 <span>ID: {job.id.slice(0, 8)}</span>
               </div>
             </div>
@@ -233,7 +237,8 @@ const JobCard = ({ job, onCancel, onRetry, onDelete, onViewArtifacts }) => {
         <div className="flex gap-2 pt-2">
           {hasArtifacts && (
             <button
-              onClick={() => onViewArtifacts(job)}
+              // Artefakte anzeigen ist ein Frontend-Modal, kein Backend-Call
+              onClick={() => onViewArtifacts(job)} 
               className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
               <FaEye className="inline mr-1" />
@@ -242,8 +247,9 @@ const JobCard = ({ job, onCancel, onRetry, onDelete, onViewArtifacts }) => {
           )}
           {canCancel && (
             <button
-              onClick={() => onCancel(job.id)}
+              onClick={() => onCancel(job.id)} // Backend-Call
               className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              disabled={isProcessingAction(job.id, 'cancel')} // Disable while processing
             >
               <FaStop className="inline mr-1" />
               Abbrechen
@@ -251,8 +257,9 @@ const JobCard = ({ job, onCancel, onRetry, onDelete, onViewArtifacts }) => {
           )}
           {canRetry && (
             <button
-              onClick={() => onRetry(job.id)}
+              onClick={() => onRetry(job.id)} // Backend-Call
               className="px-3 py-1 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
+              disabled={isProcessingAction(job.id, 'retry')} // Disable while processing
             >
               <FaRedo className="inline mr-1" />
               Wiederholen
@@ -260,7 +267,8 @@ const JobCard = ({ job, onCancel, onRetry, onDelete, onViewArtifacts }) => {
           )}
           <button
             onClick={() => onDelete(job.id)}
-            className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+            className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors disabled:opacity-50"
+            disabled={isProcessingAction(job.id, 'delete')} // Disable while processing
           >
             <FaTrash className="inline mr-1" />
             Löschen
@@ -310,11 +318,12 @@ const ArtifactsModal = ({ job, isOpen, onClose, onDownload }) => {
                     </div>
                     <div className="flex gap-2 ml-4">
                       {artifact.viewable && (
+                        // Ansehen öffnet die URL direkt im Browser (Backend liefert die Datei)
                         <button
                           onClick={() => window.open(artifact.url, '_blank')}
                           className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
                         >
-                          Ansehen
+                          <FaEye className="inline mr-1" /> Ansehen
                         </button>
                       )}
                       <button
@@ -322,7 +331,7 @@ const ArtifactsModal = ({ job, isOpen, onClose, onDownload }) => {
                         className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
                       >
                         Download
-                      </button>
+                      </button> {/* Backend liefert die Datei */}
                     </div>
                   </div>
                 </div>
@@ -352,14 +361,15 @@ const ServiceTaskManager = ({ token }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [processingActions, setProcessingActions] = useState({}); // { jobId: 'actionType' }
   const [filter, setFilter] = useState('all'); // all, running, completed, failed
   const [selectedJob, setSelectedJob] = useState(null);
   const [showArtifacts, setShowArtifacts] = useState(false);
 
-  // Mock data for demonstration - in real app, fetch from API
-  const generateMockJobs = useCallback(() => {
+  // Funktion zum Generieren von Mock-Jobs (kann entfernt werden, wenn nur Backend genutzt wird)
+  const generateMockJobs = () => {
     const jobTypes = ['upload', 'convert', 'tms'];
-    const statuses = ['running', 'completed', 'failed', 'queued'];
+    const statuses = ['running', 'completed', 'failed', 'queued', 'cancelled'];
     const mockJobs = [];
 
     for (let i = 0; i < 10; i++) {
@@ -404,24 +414,23 @@ const ServiceTaskManager = ({ token }) => {
 
     return mockJobs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, []);
+  // Ende Mock-Daten
 
   // Fetch jobs from API
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
     try {
-      // In real implementation, fetch from API endpoint like /api/jobs
-      // const response = await fetch('/api/jobs', {
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // });
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   setJobs(data);
-      // } else {
-      //   throw new Error('Failed to fetch jobs');
-      // }
-      
+      // Echte API-Anfrage an das Backend
+      const response = await fetch('/api/jobs', {
+         headers: { 'Authorization': `Bearer ${token}` } // Token senden, falls benötigt
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch jobs');
+      }
+      const data = await response.json();
+      setJobs(data);
       // For now, use mock data
       setTimeout(() => {
         setJobs(generateMockJobs());
@@ -432,7 +441,7 @@ const ServiceTaskManager = ({ token }) => {
       console.error("Error fetching jobs:", err);
       setError(err.message || "Failed to fetch jobs");
       setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [token, generateMockJobs]);
 
   useEffect(() => {
@@ -444,47 +453,66 @@ const ServiceTaskManager = ({ token }) => {
   }, [fetchJobs]);
 
   // Job actions
+  const isProcessingAction = (jobId, actionType) => processingActions[jobId] === actionType;
+
   const handleCancelJob = async (jobId) => {
+    setProcessingActions(prev => ({ ...prev, [jobId]: 'cancel' }));
     try {
-      // await fetch(`/api/jobs/${jobId}/cancel`, {
-      //   method: 'POST',
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // });
-      
-      // Mock implementation
-      setJobs(jobs.map(job => 
-        job.id === jobId ? { ...job, status: 'cancelled' } : job
-      ));
+      const response = await fetch(`/api/jobs/${jobId}/cancel`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) {
+         const errorData = await response.json();
+         throw new Error(errorData.message || 'Failed to cancel job');
+      }
+      // Optional: Backend könnte den aktualisierten Job zurückgeben
+      // const updatedJob = await response.json();
+      // setJobs(jobs.map(job => job.id === jobId ? updatedJob : job));
+      fetchJobs(); // Daten neu laden, um den aktuellen Status zu erhalten
     } catch (error) {
       console.error("Failed to cancel job:", error);
+      // Fehler anzeigen oder behandeln
+    } finally {
+      setProcessingActions(prev => { delete prev[jobId]; return { ...prev }; });
     }
   };
 
   const handleRetryJob = async (jobId) => {
+    setProcessingActions(prev => ({ ...prev, [jobId]: 'retry' }));
     try {
-      // await fetch(`/api/jobs/${jobId}/retry`, {
-      //   method: 'POST',
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // });
-      
-      // Mock implementation
-      setJobs(jobs.map(job => 
-        job.id === jobId ? { ...job, status: 'queued', error: null } : job
-      ));
+      const response = await fetch(`/api/jobs/${jobId}/retry`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+       if (!response.ok) {
+         const errorData = await response.json();
+         throw new Error(errorData.message || 'Failed to retry job');
+      }
+      // Optional: Backend könnte den aktualisierten Job zurückgeben
+      // const updatedJob = await response.json();
+      // setJobs(jobs.map(job => job.id === jobId ? updatedJob : job));
+      fetchJobs(); // Daten neu laden, um den aktuellen Status zu erhalten
     } catch (error) {
       console.error("Failed to retry job:", error);
+      // Fehler anzeigen oder behandeln
+    } finally {
+      setProcessingActions(prev => { delete prev[jobId]; return { ...prev }; });
     }
   };
 
   const handleDeleteJob = async (jobId) => {
     if (!confirm('Möchten Sie diesen Job wirklich löschen?')) return;
     
+    setProcessingActions(prev => ({ ...prev, [jobId]: 'delete' }));
     try {
-      // await fetch(`/api/jobs/${jobId}`, {
-      //   method: 'DELETE',
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // });
-      
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+       if (!response.ok) {
+         throw new Error('Failed to delete job');
+      }
       // Mock implementation
       setJobs(jobs.filter(job => job.id !== jobId));
     } catch (error) {
@@ -492,6 +520,7 @@ const ServiceTaskManager = ({ token }) => {
     }
   };
 
+  // Artefakte anzeigen (Frontend Modal)
   const handleViewArtifacts = (job) => {
     setSelectedJob(job);
     setShowArtifacts(true);
@@ -499,6 +528,7 @@ const ServiceTaskManager = ({ token }) => {
 
   const handleDownloadArtifact = async (artifact) => {
     try {
+      // Der Download wird direkt vom Browser über die Artefakt-URL des Backends ausgelöst
       // Create download link
       const link = document.createElement('a');
       link.href = artifact.url;
@@ -634,6 +664,7 @@ const ServiceTaskManager = ({ token }) => {
               onRetry={handleRetryJob}
               onDelete={handleDeleteJob}
               onViewArtifacts={handleViewArtifacts}
+              isProcessingAction={isProcessingAction}
             />
           ))}
         </div>
