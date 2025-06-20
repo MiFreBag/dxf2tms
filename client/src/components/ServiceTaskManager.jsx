@@ -366,63 +366,13 @@ const ServiceTaskManager = ({ token }) => {
   const [selectedJob, setSelectedJob] = useState(null);
   const [showArtifacts, setShowArtifacts] = useState(false);
 
-  // Funktion zum Generieren von Mock-Jobs (kann entfernt werden, wenn nur Backend genutzt wird)
-  const generateMockJobs = useCallback(() => {
-    const jobTypes = ['upload', 'convert', 'tms'];
-    const statuses = ['running', 'completed', 'failed', 'queued', 'cancelled'];
-    const mockJobs = [];
-
-    for (let i = 0; i < 10; i++) {
-      const type = jobTypes[Math.floor(Math.random() * jobTypes.length)];
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
-      const createdAt = new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000);
-      const completedAt = status === 'completed' || status === 'failed' 
-        ? new Date(createdAt.getTime() + Math.random() * 60 * 60 * 1000)
-        : null;
-
-      const job = {
-        id: `job-${Date.now()}-${i}`,
-        name: `${type.charAt(0).toUpperCase() + type.slice(1)} Job ${i + 1}`,
-        type,
-        status,
-        createdAt: createdAt.toISOString(),
-        completedAt: completedAt?.toISOString(),
-        progress: status === 'running' ? Math.floor(Math.random() * 100) : undefined,
-        inputFile: {
-          name: `example_${i + 1}.${type === 'upload' ? 'dxf' : type === 'convert' ? 'dxf' : 'pdf'}`,
-          size: Math.floor(Math.random() * 50000000) + 1000000
-        },
-        parameters: type === 'convert' 
-          ? { pageSize: 'A4', dpi: 300 }
-          : type === 'tms' 
-          ? { maxzoom: 20, format: 'png' }
-          : {},
-        artifacts: status === 'completed' ? [
-          {
-            name: type === 'convert' ? `output_${i + 1}.pdf` : type === 'tms' ? `tiles_${i + 1}.zip` : `uploaded_${i + 1}.dxf`,
-            type: type === 'convert' ? 'application/pdf' : type === 'tms' ? 'application/zip' : 'application/dxf',
-            size: Math.floor(Math.random() * 100000000) + 5000000,
-            url: `/api/download/${type}-output-${i + 1}`,
-            viewable: type === 'convert'
-          }
-        ] : [],
-        error: status === 'failed' ? `Fehler bei der ${type === 'convert' ? 'Konvertierung' : type === 'tms' ? 'TMS-Generierung' : 'Upload-Verarbeitung'}` : null
-      };
-
-      mockJobs.push(job);
-    }
-    return mockJobs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, []); // useCallback sorgt für stabile Referenz
-  // Ende Mock-Daten
-
   // Fetch jobs from API
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // Echte API-Anfrage an das Backend
       const response = await fetch('/api/jobs', {
-         headers: { 'Authorization': `Bearer ${token}` } // Token senden, falls benötigt
+         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -430,23 +380,17 @@ const ServiceTaskManager = ({ token }) => {
       }
       const data = await response.json();
       setJobs(data);
-      // For now, use mock data
-      setTimeout(() => {
-        setJobs(generateMockJobs());
-        setLoading(false);
-      }, 1000);
-      
+      setLoading(false);
     } catch (err) {
       console.error("Error fetching jobs:", err);
       setError(err.message || "Failed to fetch jobs");
       setLoading(false);
-    } finally { setLoading(false); }
-  }, [token, generateMockJobs]);
+    }
+  }, [token]);
 
   useEffect(() => {
     fetchJobs();
-    // Set up polling for real-time updates
-    const interval = setInterval(fetchJobs, 5000); // Poll alle 5 Sekunden (statt 10s oder 1s)
+    const interval = setInterval(fetchJobs, 5000);
     return () => clearInterval(interval);
   }, [fetchJobs]);
 
