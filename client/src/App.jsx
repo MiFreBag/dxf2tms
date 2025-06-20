@@ -804,56 +804,49 @@ function App() {
             </div>
           )}
           {page === 'service-task-manager' && (
-            // ServiceTaskManager müsste aktualisiert werden, um dieses 'services'-Prop zu verwenden
             <ServiceTaskManager services={dockerServicesData} />
           )}
+          {page === 'container-monitor' && (
+            <div className="h-full">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Container & System Monitor</h2>
+                <p className="text-gray-600">Docker Container und Host-System-Überwachung</p>
+              </div>
+              <ContainerMonitor
+                containers={dockerContainers}
+                images={dockerImages}
+                volumes={dockerVolumes}
+                token={token}  // Wichtig: Token für System-API-Aufrufe
+                onViewLogs={async (containerId, containerName) => {
+                  try {
+                    const response = await fetch(`${API}/containers/${containerId}/logs?lines=200`, {
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                      },
+                    });
+                    
+                    if (response.ok) {
+                      const data = await response.json();
+                      return data.logs;
+                    } else {
+                      throw new Error(`HTTP ${response.status}`);
+                    }
+                  } catch (error) {
+                    console.error('Error fetching container logs:', error);
+                    // Fallback auf Demo-Logs
+                    return [
+                      `${new Date().toISOString()} [ERROR] Failed to fetch real logs: ${error.message}`,
+                      `${new Date().toISOString()} [INFO] Showing demo logs instead`,
+                      `${new Date().toISOString()} [INFO] Container ${containerName} - Demo log entry`,
+                      `${new Date().toISOString()} [WARN] Please check API connectivity`,
+                    ];
+                  }
+                }}
+              />
+            </div>
+          )}
 
-// App.jsx - Fixes für die Syntax-Fehler
-
-// 1. Fix für den JSX-Syntax-Fehler bei Zeile 850
-// Ersetzen Sie diese Zeilen:
-
-{page === 'container-monitor' && (
-  <div className="h-full">
-    <div className="mb-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">Container & System Monitor</h2>
-      <p className="text-gray-600">Docker Container und Host-System-Überwachung</p>
-    </div>
-    <ContainerMonitor
-      containers={dockerContainers}
-      images={dockerImages}
-      volumes={dockerVolumes}
-      token={token}  // Wichtig: Token für System-API-Aufrufe
-      onViewLogs={async (containerId, containerName) => {
-        try {
-          const response = await fetch(`${API}/containers/${containerId}/logs?lines=200`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            return data.logs;
-          } else {
-            throw new Error(`HTTP ${response.status}`);
-          }
-        } catch (error) {
-          console.error('Error fetching container logs:', error);
-          // Fallback auf Demo-Logs
-          return [
-            `${new Date().toISOString()} [ERROR] Failed to fetch real logs: ${error.message}`,
-            `${new Date().toISOString()} [INFO] Showing demo logs instead`,
-            `${new Date().toISOString()} [INFO] Container ${containerName} - Demo log entry`,
-            `${new Date().toISOString()} [WARN] Please check API connectivity`,
-          ];
-        }
-      }}
-    />
-  </div>
-)}
-
-       {page === 'api-docs' && (
+          {page === 'api-docs' && (
             <div className="h-full">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">OpenAPI Spezifikation</h2>
@@ -969,7 +962,7 @@ function App() {
 
         {/* TMS-Preview-Dialog */}
         {showTmsPreviewDialog && tmsPreviewFile && (
-          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setTmsPreviewDialog(false)} />
+          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
         )}
         </main>
       </div>
