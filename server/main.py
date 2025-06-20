@@ -414,11 +414,16 @@ async def convert_file(file_id: str, user: str = Depends(verify_token)):
 async def download_file(file_id: str, user: str = Depends(verify_token)):
     """GeoPDF Datei herunterladen"""
     try:
-        file_info = files.get(file_id)
-        if not file_info or not file_info.get("geopdf_path"):
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
+        if not row or not row[2] or not row[4]:  # row[2]=Pfad, row[4]=converted
             raise HTTPException(status_code=404, detail="GeoPDF not found")
 
-        return FileResponse(file_info["geopdf_path"], filename=f"{file_info['name']}_converted.pdf")
+        geopdf_path = row[2] if row[2].endswith('.pdf') else os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
+        if not os.path.exists(geopdf_path):
+            raise HTTPException(status_code=404, detail="GeoPDF file missing on disk")
+
+        return FileResponse(geopdf_path, filename=f"{row[1].rsplit('.',1)[0]}_converted.pdf")
     except Exception as e:
         logger.error(f"Error downloading GeoPDF for file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Download failed")
