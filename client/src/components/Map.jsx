@@ -14,10 +14,12 @@ function MapController({ selectedLayer }) {
     if (selectedLayer) {
       // Try different possible bounds locations
       let bounds = null
-      
       if (selectedLayer.config && selectedLayer.config.bounds) {
         bounds = selectedLayer.config.bounds
         console.log('Found bounds in config:', bounds)
+      } else if (selectedLayer.bbox) {
+        bounds = selectedLayer.bbox
+        console.log('Found bounds in bbox:', bounds)
       } else if (selectedLayer.bounds) {
         bounds = selectedLayer.bounds
         console.log('Found bounds directly:', bounds)
@@ -179,6 +181,8 @@ function Map() {
               {/* Try different bounds locations */}
               {selectedLayer.config && selectedLayer.config.bounds ? (
                 <div><strong>Config Bounds:</strong> {selectedLayer.config.bounds.map(x => x.toFixed(2)).join(', ')}</div>
+              ) : selectedLayer.bbox ? (
+                <div><strong>DB Bounds:</strong> {selectedLayer.bbox.map(x => x.toFixed(2)).join(', ')}</div>
               ) : selectedLayer.bounds ? (
                 <div><strong>Direct Bounds:</strong> {selectedLayer.bounds.map(x => x.toFixed(2)).join(', ')}</div>
               ) : selectedLayer.metadata && selectedLayer.metadata.bounds ? (
