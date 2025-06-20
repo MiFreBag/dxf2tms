@@ -1,0 +1,12 @@
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<svg baseProfile="full" contentScriptType="text/ecmascript" contentStyleType="text/css" enable-background="new 0 0 3.496 2.193" height="2.193px" id="Ebene_1" preserveAspectRatio="xMidYMid meet" version="1.1" viewBox="0 0 3.496 2.193" width="3.496px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px" zoomAndPan="magnify">           
+    <style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style>            
+    <g>                    
+        <g>                             
+            <rect class="static_symb_det_fill_default" height="0.733" id="det_179_fill" width="3.496" y="1.462"></rect>                             
+            <rect class="static_symb_det_stroke" height="0.733" width="3.496" y="1.462"></rect>  </g>                    
+        <g>                             
+            <text class="static_symb_det_txtbox_txt_stroke" id="textfeld" text-anchor="middle" x="1.75" y="0.9">x</text>             
+            <text class="static_symb_det_txtbox_txt" id="textfeld" text-anchor="middle" x="1.75" y="0.9">x</text>  </g> </g>  
+    <circle cx="1.75" cy="1.82" fill="#FF0000" id="symbolcenter" r="0.2" visibility="hidden"></circle> </svg>

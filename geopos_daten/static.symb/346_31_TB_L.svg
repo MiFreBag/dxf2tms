@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<svg baseProfile="full" contentScriptType="text/ecmascript" contentStyleType="text/css" enable-background="new 0 0 4.777 1.559" height="1.559px" id="Ebene_1" preserveAspectRatio="xMidYMid meet" version="1.1" viewBox="0 0 4.777 1.559" width="4.777px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px" zoomAndPan="magnify"> 
+    <style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style>  
+    <g>  
+        <g>   
+            <rect class="static_symb_sign_static_fill" height="1.299" id="sign_346_fill" width="1.213" x="3.564" y="0.222"></rect>   
+            <rect class="static_symb_sign_static_stroke" height="1.299" width="1.213" x="3.564" y="0.222"></rect>  </g>  
+        <g>   
+            <path d="M4.379,0.794l0.119-0.118L4.373,0.55L4.236,0.685l0.109,0.109H4.031L4.14,0.683l0.01-0.008                  L4.023,0.549L3.888,0.685l0.109,0.109H3.881v0.284h0.623V0.794H4.379z                  M4.373,0.584l0.09,0.091l-0.1,0.101L4.271,0.685 L4.373,0.584z                  M4.023,0.584l0.092,0.091L4.013,0.776l-0.09-0.091L4.023,0.584z                  M4.015,1.156c0,0.023-0.02,0.044-0.045,0.044                  c-0.023,0-0.043-0.021-0.043-0.044c0-0.026,0.02-0.046,0.043-0.046C3.996,1.11,4.015,1.129,4.015,1.156z                  M4.109,1.156                  c0,0.023-0.021,0.044-0.045,0.044S4.021,1.178,4.021,1.156c0-0.026,0.02-0.046,0.043-0.046C4.09,1.11,4.109,1.129,4.109,1.156z                  M4.461,1.156c0,0.023-0.021,0.044-0.045,0.044c-0.025,0-0.047-0.021-0.047-0.044c0-0.026,0.021-0.046,0.047-0.046                  C4.439,1.11,4.461,1.129,4.461,1.156z                  M4.363,1.156c0,0.023-0.021,0.044-0.045,0.044c-0.025,0-0.045-0.021-0.045-0.044                  c0-0.026,0.02-0.046,0.045-0.046S4.363,1.129,4.363,1.156z"></path>   
+            <path class="static_symb_sign_fill_active" d="M4.379,0.794l0.119-0.118L4.373,0.55L4.236,0.685l0.109,0.109H4.031L4.14,0.683l0.01-0.008L4.023,0.549                  L3.888,0.685l0.109,0.109H3.881v0.284h0.623V0.794H4.379z                  M4.373,0.584l0.09,0.091l-0.1,0.101L4.271,0.685L4.373,0.584z                  M4.023,0.584l0.092,0.091L4.013,0.776l-0.09-0.091L4.023,0.584z                  M4.015,1.156c0,0.023-0.02,0.044-0.045,0.044                  c-0.023,0-0.043-0.021-0.043-0.044c0-0.026,0.02-0.046,0.043-0.046C3.996,1.11,4.015,1.129,4.015,1.156z                  M4.109,1.156                  c0,0.023-0.021,0.044-0.045,0.044S4.021,1.178,4.021,1.156c0-0.026,0.02-0.046,0.043-0.046C4.09,1.11,4.109,1.129,4.109,1.156z                  M4.461,1.156c0,0.023-0.021,0.044-0.045,0.044c-0.025,0-0.047-0.021-0.047-0.044c0-0.026,0.021-0.046,0.047-0.046                  C4.439,1.11,4.461,1.129,4.461,1.156z                  M4.363,1.156c0,0.023-0.021,0.044-0.045,0.044c-0.025,0-0.045-0.021-0.045-0.044                  c0-0.026,0.02-0.046,0.045-0.046S4.363,1.129,4.363,1.156z"></path>  </g>  
+        <g>   
+            <text class="static_symb_det_txtbox_txt_stroke" id="textfeld" text-anchor="end" x="2.8" y="1.4">x</text>
+            <text class="static_symb_sign_txtbox_txt" id="textfeld" text-anchor="end" x="2.8" y="1.4">x</text>  </g> </g> 
+<circle visibility="hidden" id="symbolcenter" r="0.2" cx="4.2" cy="0.9" fill="#FF0000"></circle>
+</svg>

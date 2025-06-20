@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<svg baseProfile="full" contentScriptType="text/ecmascript" contentStyleType="text/css" height="3.635px" id="Ebene_1" preserveAspectRatio="xMidYMid meet" version="1.1" viewBox="0 0 3.635 3.635" width="3.635px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px" zoomAndPan="magnify"> 
+    <style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style>  
+    <g>  
+        <g>   
+            <path class="static_symb_polynd_fill" d="M3.633,1.814C3.633,0.811,2.819,0,1.815,0S0,0.813,0,1.814c0,1.007,0.813,1.818,1.815,1.818                  C2.819,3.633,3.633,2.818,3.633,1.814L3.633,1.814z" id="polynd_500_fill"></path>   
+            <path class="static_symb_polynd_stroke" d="M3.633,1.814C3.633,0.811,2.819,0,1.815,0S0,0.813,0,1.814c0,1.007,0.813,1.818,1.815,1.818                  C2.819,3.633,3.633,2.818,3.633,1.814L3.633,1.814z"></path>  </g>  
+        <g>   
+            <text class="static_symb_polynd_txtbox_txt" id="textfeld" text-anchor="middle" x="1.85" y="2.2">x</text>  </g> </g> 
+<circle visibility="hidden" id="symbolcenter" r="0.2" cx="1.85" cy="1.8" fill="#FF0000"></circle>
+</svg>

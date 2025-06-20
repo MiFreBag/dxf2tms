@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg enable-background="new 0 0 1.5 1.5" height="1.5px" id="Ebene_1" version="1.1" viewBox="0 0 1.5 1.5" width="1.5px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px">
+<style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style>
+<g>
+	<g>
+		<path class="vs_project_all_stroke" d="M0.75,0.01c-0.409,0-0.74,0.331-0.74,0.74s0.331,0.74,0.74,0.74s0.74-0.331,0.74-0.74    S1.159,0.01,0.75,0.01z M0.369,1.132C0.183,0.945,0.162,0.66,0.3,0.453L1.048,1.2C0.84,1.338,0.555,1.317,0.369,1.132z M1.2,1.048    L0.453,0.3C0.66,0.162,0.945,0.183,1.132,0.369C1.317,0.555,1.338,0.84,1.2,1.048z"></path>
+		<path class="vs_project_all_fill" d="M0.75,0.01c-0.409,0-0.74,0.331-0.74,0.74s0.331,0.74,0.74,0.74s0.74-0.331,0.74-0.74    S1.159,0.01,0.75,0.01z M0.369,1.132C0.183,0.945,0.162,0.66,0.3,0.453L1.048,1.2C0.84,1.338,0.555,1.317,0.369,1.132z M1.2,1.048    L0.453,0.3C0.66,0.162,0.945,0.183,1.132,0.369C1.317,0.555,1.338,0.84,1.2,1.048z"></path>
+	</g>
+</g>
+</svg>

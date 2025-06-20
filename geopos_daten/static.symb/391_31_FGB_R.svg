@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<svg baseProfile="full" contentScriptType="text/ecmascript" contentStyleType="text/css" enable-background="new 0 0 3.617 1.121" height="1.121px" id="Ebene_1" preserveAspectRatio="xMidYMid meet" version="1.1" viewBox="0 0 3.617 1.121" width="3.617px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px" zoomAndPan="magnify">      
+    <style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style>       
+    <g>           
+        <g>                
+            <rect class="static_symb_sign_fill_active" height="1.115" id="sign_391_fill" width="1.027"></rect>                
+            <rect class="static_symb_sign_stroke" height="1.115" width="1.027"></rect>  </g>           
+        <g>                
+            <path class="static_symb_sign_static_stroke" d="M0.239,0.931l0.568-0.002L0.55,0.584V0.439c0.078-0.02,0.137-0.085,0.137-0.168                  c0-0.098-0.079-0.177-0.178-0.177c-0.096,0-0.176,0.078-0.176,0.177c0,0.091,0.068,0.162,0.155,0.173v0.144L0.239,0.931z"></path>                
+            <path class="static_symb_sign_static_fill" d="M0.239,0.931l0.568-0.002L0.55,0.584V0.439c0.078-0.02,0.137-0.085,0.137-0.168                  c0-0.098-0.079-0.177-0.178-0.177c-0.096,0-0.176,0.078-0.176,0.177c0,0.091,0.068,0.162,0.155,0.173v0.144L0.239,0.931z"></path>  </g>           
+        <g>                
+            <text class="static_symb_det_txtbox_txt_stroke" id="textfeld" text-anchor="start" x="1.7" y="1.1">x</text>             
+            <text class="static_symb_sign_txtbox_txt" id="textfeld" text-anchor="start" x="1.7" y="1.1">x</text>  </g> </g>  
+    <circle cx="0.5" cy="0.5" fill="#FF0000" id="symbolcenter" r="0.2" visibility="hidden"></circle> </svg>

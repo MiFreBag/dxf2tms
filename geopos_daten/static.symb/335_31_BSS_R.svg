@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<svg baseProfile="full" contentScriptType="text/ecmascript" contentStyleType="text/css" enable-background="new 0 0 4.109 2.148" height="2.148px" id="Ebene_1" preserveAspectRatio="xMidYMid meet" version="1.1" viewBox="0 0 4.109 2.148" width="4.109px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px" zoomAndPan="magnify"> 
+    <style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style>  
+    <g>  
+        <g>   
+            <polygon class="static_symb_sign_static_fill" id="sign_335_fill" points="1.575,0.145 0.781,1.555 0,0.145"></polygon>   
+            <polygon class="static_symb_sign_stroke" points="1.575,0.145 0.781,1.555 0,0.145"></polygon>  </g>  
+        <g>   
+            <path class="static_symb_sign_static_fill" d="M0.853,1.427h0.003v0.707H0.71V1.428l0.07,0.128L0.853,1.427z M0.75,1.257L0.217,0.324                  c-0.008-0.015-0.008-0.032,0-0.046C0.225,0.263,0.24,0.255,0.256,0.255H1.28c0.017,0,0.032,0.01,0.04,0.022                  c0.009,0.013,0.01,0.03,0.001,0.045L0.831,1.255c-0.01,0.014-0.024,0.024-0.04,0.024c0,0,0,0-0.001,0                  C0.773,1.279,0.758,1.269,0.75,1.257z M0.336,0.347l0.451,0.79l0.417-0.79H0.336z"></path>   
+            <path class="static_symb_sign_static_stroke" d="M0.853,1.427h0.003v0.707H0.71V1.428l0.07,0.128L0.853,1.427z M0.75,1.257L0.217,0.324                  c-0.008-0.015-0.008-0.032,0-0.046C0.225,0.263,0.24,0.255,0.256,0.255H1.28c0.017,0,0.032,0.01,0.04,0.022                  c0.009,0.013,0.01,0.03,0.001,0.045L0.831,1.255c-0.01,0.014-0.024,0.024-0.04,0.024c0,0,0,0-0.001,0                  C0.773,1.279,0.758,1.269,0.75,1.257z M0.336,0.347l0.451,0.79l0.417-0.79H0.336z"></path>  </g>  
+        <g>   
+            <text class="static_symb_det_txtbox_txt_stroke" id="textfeld" text-anchor="start" x="2" y="1.8">x</text>
+            <text class="static_symb_sign_txtbox_txt" id="textfeld" text-anchor="start" x="2" y="1.8">x</text>  </g> </g> 
+<circle visibility="hidden" id="symbolcenter" r="0.2" cx="0.8" cy="0.9" fill="#FF0000"></circle>
+</svg>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<svg baseProfile="full" contentScriptType="text/ecmascript" contentStyleType="text/css" enable-background="new 0 0 2.504 2.623" height="2.623px" id="Ebene_1" preserveAspectRatio="xMidYMid meet" version="1.1" viewBox="0 0 2.504 2.623" width="2.504px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px" zoomAndPan="magnify"> 
+    <style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style>  
+    <g>  
+        <g>   
+            <rect class="static_symb_sign_static_fill" height="1.021" id="sign_343_fill" width="1.01" x="0.698"></rect>   
+            <rect class="static_symb_sign_static_stroke" height="1.021" width="1.01" x="0.698"></rect>  </g>  
+        <g>   
+            <path class="static_symb_sign_stroke" d="M1.336,0.393L1.224,0.168C1.223,0.166,1.22,0.166,1.219,0.164C1.215,0.16,1.213,0.156,1.209,0.153                  C1.208,0.152,1.208,0.148,1.204,0.147c-0.002-0.001-0.002,0-0.004,0C1.198,0.146,1.193,0.146,1.189,0.146                  c-0.002,0-0.004-0.003-0.006-0.003c-0.003,0-0.004,0.003-0.006,0.004c-0.005,0-0.009,0-0.013,0.001c0,0-0.002-0.001-0.004,0                  C1.159,0.149,1.159,0.152,1.157,0.154C1.153,0.156,1.15,0.16,1.147,0.164c0,0.002-0.004,0.003-0.006,0.006L1.03,0.393                  c-0.013,0.022-0.003,0.05,0.02,0.063C1.056,0.46,1.064,0.461,1.071,0.461c0.018,0,0.032-0.01,0.041-0.026l0.025-0.051v0.487                  c0,0.025,0.021,0.047,0.046,0.047c0.026,0,0.047-0.021,0.047-0.047V0.385l0.022,0.049C1.262,0.451,1.278,0.46,1.295,0.46                  c0.007,0,0.014-0.001,0.021-0.005C1.338,0.442,1.347,0.416,1.336,0.393z"></path>   
+            <path class="static_symb_sign_fill_active" d="M1.336,0.393L1.224,0.168C1.223,0.166,1.22,0.166,1.219,0.164C1.215,0.16,1.213,0.156,1.209,0.153                  C1.208,0.152,1.208,0.148,1.204,0.147c-0.002-0.001-0.002,0-0.004,0C1.198,0.146,1.193,0.146,1.189,0.146                  c-0.002,0-0.004-0.003-0.006-0.003c-0.003,0-0.004,0.003-0.006,0.004c-0.005,0-0.009,0-0.013,0.001c0,0-0.002-0.001-0.004,0                  C1.159,0.149,1.159,0.152,1.157,0.154C1.153,0.156,1.15,0.16,1.147,0.164c0,0.002-0.004,0.003-0.006,0.006L1.03,0.393                  c-0.013,0.022-0.003,0.05,0.02,0.063C1.056,0.46,1.064,0.461,1.071,0.461c0.018,0,0.032-0.01,0.041-0.026l0.025-0.051v0.487                  c0,0.025,0.021,0.047,0.046,0.047c0.026,0,0.047-0.021,0.047-0.047V0.385l0.022,0.049C1.262,0.451,1.278,0.46,1.295,0.46                  c0.007,0,0.014-0.001,0.021-0.005C1.338,0.442,1.347,0.416,1.336,0.393z"></path>  </g>  
+        <g>   
+            <text class="static_symb_det_txtbox_txt_stroke" id="textfeld" text-anchor="middle" x="1.25" y="2.55">x</text>
+            <text class="static_symb_sign_txtbox_txt" id="textfeld" text-anchor="middle" x="1.25" y="2.55">x</text>  </g> </g> 
+<circle visibility="hidden" id="symbolcenter" r="0.2" cx="1.2" cy="0.55" fill="#FF0000"></circle>
+</svg>

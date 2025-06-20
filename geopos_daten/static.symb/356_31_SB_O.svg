@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<svg baseProfile="full" contentScriptType="text/ecmascript" contentStyleType="text/css" enable-background="new 0 0 1.193 4.127" height="4.127px" id="Ebene_1" preserveAspectRatio="xMidYMid meet" version="1.1" viewBox="0 0 1.193 4.127" width="1.193px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px" zoomAndPan="magnify">      
+    <style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style>       
+    <g>           
+        <g>                
+            <rect class="static_symb_sign_fill_active" height="1.198" id="sign_356_fill" width="1.084" x="0.09" y="2.929"></rect>                
+            <rect class="static_symb_sign_stroke" height="1.198" width="1.084" x="0.09" y="2.929"></rect>  </g>           
+        <g>                
+            <path class="static_symb_sign_static_stroke" d="M1.034,3.527c0-0.223-0.18-0.4-0.401-0.4c-0.221,0-0.401,0.181-0.401,0.4                  c0,0.223,0.179,0.402,0.401,0.402C0.855,3.93,1.034,3.75,1.034,3.527L1.034,3.527z"></path>                
+            <path class="static_symb_sign_static_fill" d="M1.034,3.527c0-0.223-0.18-0.4-0.401-0.4c-0.221,0-0.401,0.181-0.401,0.4                  c0,0.223,0.179,0.402,0.401,0.402C0.855,3.93,1.034,3.75,1.034,3.527L1.034,3.527z"></path>  </g>           
+        <g>                
+            <text class="static_symb_det_txtbox_txt_stroke" id="textfeld" text-anchor="start" transform="matrix(6.123234e-017 -1 1 6.123234e-017 1.1 2.4)">x</text>             
+            <text class="static_symb_sign_txtbox_txt" id="textfeld" text-anchor="start" transform="matrix(6.123234e-017 -1 1 6.123234e-017 1.1 2.4)">x</text>  </g> </g>  
+    <circle cx="0.65" cy="3.53" fill="#FF0000" id="symbolcenter" r="0.2" visibility="hidden"></circle> </svg>

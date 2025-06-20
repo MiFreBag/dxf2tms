@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<svg baseProfile="full" contentScriptType="text/ecmascript" contentStyleType="text/css" enable-background="new 0 0 2 3.199" height="3.199px" id="Ebene_1" preserveAspectRatio="xMidYMid meet" version="1.1" viewBox="0 0 2 3.199" width="2px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px" zoomAndPan="magnify">     
+    <style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style>     
+    <g>     
+        <g transform="translate(0.3 -1.1)">     
+            <rect class="static_symb_mast_static_fill" height="1.396" id="mast_417_fill" width="1.348" x="0.04" y="2.8"></rect>     
+            <rect class="static_symb_mast_stroke" height="1.396" width="1.348" x="0.04" y="2.8"></rect>  </g>     
+        <g transform="translate(0.3 -0.35)">     
+            <path class="static_symb_mast_static_strokeW" d="M0.77,2.717V2.421h0.168v-0.08H0.521V2.42h0.158v0.298C0.571,2.741,0.487,2.833,0.487,2.947                  c0,0.135,0.106,0.238,0.237,0.238c0.134,0,0.239-0.104,0.239-0.238C0.967,2.831,0.88,2.737,0.77,2.717z"></path>     
+            <path class="static_symb_mast_fill_default" d="M0.77,2.717V2.421h0.168v-0.08H0.521V2.42h0.158v0.298C0.571,2.741,0.487,2.833,0.487,2.947                  c0,0.135,0.106,0.238,0.237,0.238c0.134,0,0.239-0.104,0.239-0.238C0.967,2.831,0.88,2.737,0.77,2.717z"></path>  </g>     
+        <g transform="translate(0.3 -1)">     
+            <text class="static_symb_det_txtbox_txt_stroke" id="textfeld" text-anchor="end" transform="matrix(-2.347601e-016 1.278 -1 -1.836970e-016 0.2 1.9)">x</text>   
+            <text class="static_symb_mast_txtbox_txt" id="textfeld" text-anchor="end" transform="matrix(-2.347601e-016 1.278 -1 -1.836970e-016 0.2 1.9)">x</text>  </g>  </g>     
+    <circle cx="1.02" cy="2.5" fill="#FF0000" id="symbolcenter" r="0.2" visibility="hidden"></circle> </svg>

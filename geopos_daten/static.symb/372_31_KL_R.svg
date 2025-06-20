@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<svg baseProfile="full" contentScriptType="text/ecmascript" contentStyleType="text/css" enable-background="new 0 0 3.893 1.305" height="1.305px" id="Ebene_1" preserveAspectRatio="xMidYMid meet" version="1.1" viewBox="0 0 3.893 1.305" width="3.893px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px" zoomAndPan="magnify">    
+    <style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style>     
+    <g>     
+        <g>     
+            <rect class="static_symb_sign_static_fill" height="1.234" id="sign_372_fill" width="1.173" x="0" y="0.071"></rect>     
+            <rect class="static_symb_sign_static_stroke" height="1.234" width="1.173" x="0" y="0.071"></rect>  </g>     
+        <g>     
+            <path class="static_symb_sign_stroke" d="M0.977,0.706c0-0.219-0.177-0.396-0.396-0.396c-0.219,0-0.396,0.18-0.396,0.396                  c0,0.22,0.177,0.396,0.396,0.396C0.801,1.104,0.977,0.927,0.977,0.706L0.977,0.706z"></path>     
+            <path class="static_symb_sign_fill_active" d="M0.977,0.706c0-0.219-0.177-0.396-0.396-0.396c-0.219,0-0.396,0.18-0.396,0.396                  c0,0.22,0.177,0.396,0.396,0.396C0.801,1.104,0.977,0.927,0.977,0.706L0.977,0.706z"></path>  </g>     
+        <g>     
+            <text class="static_symb_det_txtbox_txt_stroke" id="textfeld" text-anchor="start" x="1.8" y="1.15">x</text>   
+            <text class="static_symb_sign_txtbox_txt" id="textfeld" text-anchor="start" x="1.8" y="1.15">x</text>  </g> </g>  
+    <circle cx="0.58" cy="0.7" fill="#FF0000" id="symbolcenter" r="0.2" visibility="hidden"></circle> </svg>

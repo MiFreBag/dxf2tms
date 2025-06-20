@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet href="http://plr2-dev/themes/vrsz/images/geoposlib/geopos_symb.css" type="text/css"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg enable-background="new 0 0 2.482 2.48" height="2.48px" id="Ebene_1" version="1.1" viewBox="0 0 2.482 2.48" width="2.482px" x="0px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" y="0px">
+<style type="text/css">@import url(&quot;/themes/vrsz/images/geoposlib/geopos_symb.css&quot;);</style> 
+<g>
+	<g>
+		<path class="static_symb_spur_fill_default" d="M2.482,1.241C2.482,0.554,1.927,0,1.24,0C0.554-0.001,0,0.556,0,1.241c0,0.686,0.557,1.24,1.238,1.24    C1.926,2.483,2.482,1.927,2.482,1.241L2.482,1.241z" id="spur_210_fill"></path>
+		<path class="static_symb_spur_stroke" d="M2.482,1.241C2.482,0.554,1.927,0,1.24,0C0.554-0.001,0,0.556,0,1.241c0,0.686,0.557,1.24,1.238,1.24    C1.926,2.483,2.482,1.927,2.482,1.241L2.482,1.241z"></path>
+	</g>
+	<g>
+		<text class="static_symb_spur_txtbox_txt" id="textfeld" text-anchor="middle" x="1.245" y="1.75">x</text>
+	</g>
+</g>
+<circle visibility="hidden" id="symbolcenter" r="0.2" cx="1.24" cy="1.24" fill="#FF0000"></circle>
+</svg>
