@@ -445,9 +445,8 @@ const ServiceTaskManager = ({ token }) => {
 
   useEffect(() => {
     fetchJobs();
-    
     // Set up polling for real-time updates
-    const interval = setInterval(fetchJobs, 10000); // Poll every 10 seconds
+    const interval = setInterval(fetchJobs, 5000); // Poll alle 5 Sekunden (statt 10s oder 1s)
     return () => clearInterval(interval);
   }, [fetchJobs]);
 
