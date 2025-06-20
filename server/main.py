@@ -83,42 +83,49 @@ app.add_middleware(
 # SQLite-Datenbank initialisieren
 DB_PATH = "files.db"
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-cursor = conn.cursor()
+conn.execute("PRAGMA journal_mode=WAL;")  # WAL-Modus für bessere Parallelisierung
+# Kein globaler Cursor mehr!
 
 # Tabelle erstellen
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS files (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    path TEXT,
-    size INTEGER,
-    converted BOOLEAN,
-    uploaded_at TEXT,
-    uploaded_by TEXT
-)
-""")
-conn.commit()
+with conn:
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS files (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        path TEXT,
+        size INTEGER,
+        converted BOOLEAN,
+        uploaded_at TEXT,
+        uploaded_by TEXT
+    )
+    """)
+    conn.commit()
 
 # Erweiterung der Tabelle um weitere Metadatenfelder
-cursor.execute("""
-ALTER TABLE files ADD COLUMN status TEXT DEFAULT 'uploaded'
-""")
-try:
-    cursor.execute("ALTER TABLE files ADD COLUMN error_message TEXT")
-except sqlite3.OperationalError:
-    pass  # Spalte existiert evtl. schon
-conn.commit()
+with conn:
+    cursor = conn.cursor()
+    cursor.execute("""
+    ALTER TABLE files ADD COLUMN status TEXT DEFAULT 'uploaded'
+    """)
+    try:
+        cursor.execute("ALTER TABLE files ADD COLUMN error_message TEXT")
+    except sqlite3.OperationalError:
+        pass  # Spalte existiert evtl. schon
+    conn.commit()
 
 # Zusätzliche Spalten für Bounding Box und Layer-Infos
-try:
-    cursor.execute("ALTER TABLE files ADD COLUMN bbox TEXT")
-except sqlite3.OperationalError:
-    pass
-try:
-    cursor.execute("ALTER TABLE files ADD COLUMN layer_info TEXT")
-except sqlite3.OperationalError:
-    pass
-conn.commit()
+with conn:
+    cursor = conn.cursor()
+    try:
+        cursor.execute("ALTER TABLE files ADD COLUMN bbox TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE files ADD COLUMN layer_info TEXT")
+    except sqlite3.OperationalError:
+        pass
+    conn.commit()
 
 # Verzeichnisse erstellen
 for directory in [UPLOAD_DIR, OUTPUT_DIR, STATIC_ROOT, TEMPLATES_DIR]:
@@ -343,11 +350,12 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
             f.write(content)
 
         # Metadaten in SQLite speichern
-        cursor.execute(
-            "INSERT INTO files (id, name, path, size, converted, uploaded_at, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (file_id, file.filename, dxf_path, len(content), False, datetime.utcnow().isoformat(), user)
-        )
-        conn.commit()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO files (id, name, path, size, converted, uploaded_at, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (file_id, file.filename, dxf_path, len(content), False, datetime.utcnow().isoformat(), user)
+            )
 
         logger.info(f"Datei erfolgreich hochgeladen: {file.filename} (ID: {file_id})")
         return {"id": file_id, "name": file.filename, "path": dxf_path, "size": len(content), "converted": False, "uploaded_at": datetime.utcnow().isoformat(), "uploaded_by": user}
@@ -380,8 +388,10 @@ async def list_files(
         if date_to:
             query += " AND uploaded_at <= ?"
             params.append(date_to)
-        cursor.execute(query, tuple(params))
-        rows = cursor.fetchall()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute(query, tuple(params))
+            rows = cursor.fetchall()
         files = [
             {
                 "id": row[0],
@@ -407,8 +417,10 @@ async def list_files(
 async def get_file_details(file_id: str, user: str = Depends(verify_token)):
     """Details zu einer Datei abrufen"""
     try:
-        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-        row = cursor.fetchone()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+            row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
 
@@ -433,10 +445,13 @@ async def get_file_details(file_id: str, user: str = Depends(verify_token)):
 async def convert_file(file_id: str, user: str = Depends(verify_token)):
     """DXF zu GeoPDF konvertieren und Metadaten speichern"""
     try:
-        cursor.execute("UPDATE files SET status = ? WHERE id = ?", ("converting", file_id))
-        conn.commit()
-        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-        row = cursor.fetchone()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE files SET status = ? WHERE id = ?", ("converting", file_id))
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+            row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
         dxf_path = row[2]
@@ -451,12 +466,14 @@ async def convert_file(file_id: str, user: str = Depends(verify_token)):
                     layer_info = result.get('layer_info')
             except TypeError:
                 dxf_to_geopdf(dxf_path, geopdf_path)
-            cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ? WHERE id = ?", (True, geopdf_path, "converted", bbox, layer_info, file_id))
-            conn.commit()
+            with conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ? WHERE id = ?", (True, geopdf_path, "converted", bbox, layer_info, file_id))
             return {"message": "File converted successfully", "fileName": row[1]}
         except Exception as e:
-            cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
-            conn.commit()
+            with conn:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
             logger.error(f"Error converting file {file_id}: {e}")
             raise HTTPException(status_code=500, detail="Conversion failed")
     except Exception as e:
@@ -467,8 +484,10 @@ async def convert_file(file_id: str, user: str = Depends(verify_token)):
 async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token)):
     """DXF zu GeoPDF Konvertierung auslösen"""
     try:
-        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-        row = cursor.fetchone()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+            row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
 
@@ -479,13 +498,15 @@ async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token)
         dxf_to_geopdf(dxf_path, geopdf_path)
 
         # Datei als konvertiert markieren
-        cursor.execute("UPDATE files SET converted = ?, path = ?, status = ? WHERE id = ?", (True, geopdf_path, "converted", file_id))
-        conn.commit()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE files SET converted = ?, path = ?, status = ? WHERE id = ?", (True, geopdf_path, "converted", file_id))
 
         return {"message": "File converted successfully", "fileName": row[1]}
     except Exception as e:
-        cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
-        conn.commit()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
         logger.error(f"Error converting file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Conversion failed")
 
@@ -521,8 +542,10 @@ async def download_file(file_id: str, request: Request, user: str = Depends(veri
     """GeoPDF Datei herunterladen"""
     try:
         logger.info(f"Download-Request für Datei: {file_id} von {request.client.host}")
-        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-        row = cursor.fetchone()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+            row = cursor.fetchone()
         if not row or not row[2] or not row[4]:  # row[2]=Pfad, row[4]=converted
             logger.warning(f"Download: Datei nicht gefunden oder nicht konvertiert: {file_id}")
             raise HTTPException(status_code=404, detail="GeoPDF not found")
@@ -540,13 +563,15 @@ async def download_file(file_id: str, request: Request, user: str = Depends(veri
     except Exception as e:
         logger.error(f"Error downloading GeoPDF for file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Download failed")
-    
+
 @app.delete("/files/{file_id}")
 async def delete_file(file_id: str, user: str = Depends(verify_token)):
     """Datei löschen"""
     try:
-        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-        row = cursor.fetchone()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+            row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
 
@@ -559,8 +584,9 @@ async def delete_file(file_id: str, user: str = Depends(verify_token)):
                 os.remove(path)
 
         # Aus Datenbank entfernen
-        cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
-        conn.commit()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
 
         logger.info(f"File deleted: {file_id}")
         return {"message": "File deleted successfully"}
@@ -604,15 +630,18 @@ async def cleanup_files(days: int = 7, status: str = "error"):
     """Automatische Bereinigung alter/gefehlerter Dateien"""
     import datetime
     cutoff = (datetime.datetime.utcnow() - datetime.timedelta(days=days)).isoformat()
-    cursor.execute("SELECT id, path FROM files WHERE status = ? AND uploaded_at < ?", (status, cutoff))
-    rows = cursor.fetchall()
+    with conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, path FROM files WHERE status = ? AND uploaded_at < ?", (status, cutoff))
+        rows = cursor.fetchall()
     deleted = 0
     for file_id, path in rows:
         if os.path.exists(path):
             os.remove(path)
-        cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
         deleted += 1
-    conn.commit()
     return {"deleted": deleted, "status": status, "older_than": days}
 
 if __name__ == "__main__":
