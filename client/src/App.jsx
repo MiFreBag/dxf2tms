@@ -201,12 +201,28 @@ function App() {
     }
   }
 
-  const handlePreview = (file) => {
+  const handlePreview = async (file) => {
     console.info('Vorschau-Klick:', file);
     if (file.converted) {
-      const url = `/api/download/${file.id}`;
-      window.open(url, '_blank');
-      addMessage('Vorschau geöffnet', 'success');
+      try {
+        const response = await fetch(`/api/download/${file.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) {
+          addMessage('Vorschau fehlgeschlagen: ' + response.status, 'error');
+          return;
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        // PDF-Vorschau in neuem Tab
+        window.open(url, '_blank');
+        addMessage('Vorschau geöffnet', 'success');
+      } catch (error) {
+        addMessage('Vorschau-Fehler: ' + error, 'error');
+        console.error('Vorschau-Fehler:', error);
+      }
     } else {
       addMessage('Keine Vorschau verfügbar', 'warning');
       console.warn('Vorschau nicht verfügbar:', file);
