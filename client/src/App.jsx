@@ -11,7 +11,8 @@ import {
   Navigation,
   Layers,
   Menu,
-  X
+  X,
+  BookOpen
 } from 'lucide-react'
 import Map from './components/Map.jsx' // Import der Map Komponente
 import ServiceTaskManager from './components/ServiceTaskManager.jsx';
@@ -42,6 +43,9 @@ function App() {
   // State für TMS-Dialog
   const [showTmsDialog, setShowTmsDialog] = useState(false);
   const [tmsParams, setTmsParams] = useState({ file: null, maxzoom: 20 });
+
+  // State für API-Dokumentation
+  const [showApiDocs, setShowApiDocs] = useState(false);
 
   // addMessage muss VOR allen useCallback-Hooks stehen, die es als Abhängigkeit nutzen!
   const addMessage = useCallback((text, type = 'info') => {
@@ -389,11 +393,12 @@ function App() {
   // Navigation items
   const navItems = [
     { id: 'upload', label: 'Upload & Convert', icon: Upload },
-    { id: 'map', label: 'Kartenansicht', icon: MapPin }, // MapPin statt Map
+    { id: 'map', label: 'Kartenansicht', icon: MapPin },
     { id: 'n8n', label: 'n8n Workflow', icon: Layers },
     { id: 'service-task-manager', label: 'Service Task Manager', icon: Layers },
     { id: 'container-monitor', label: 'Container Monitor', icon: Layers },
     { id: 'geopos-client', label: 'Geopos Client', icon: Navigation },
+    { id: 'api-docs', label: 'API Docs', icon: BookOpen },
   ]
 
   return (
@@ -762,6 +767,18 @@ function App() {
 
           {page === 'geopos-client' && (
             <GeoposClient />
+          )}
+
+          {page === 'api-docs' && (
+            <div className="h-full">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">OpenAPI Spezifikation</h2>
+                <p className="text-gray-600">Swagger UI der Backend-API</p>
+              </div>
+              <div className="h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border overflow-hidden">
+                <iframe src="/api/swagger" title="OpenAPI" className="w-full h-full border-none" />
+              </div>
+            </div>
           )}
 
         {/* Blobstore-Modal */}
