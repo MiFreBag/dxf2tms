@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
 import jwt
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -107,6 +107,17 @@ try:
     cursor.execute("ALTER TABLE files ADD COLUMN error_message TEXT")
 except sqlite3.OperationalError:
     pass  # Spalte existiert evtl. schon
+conn.commit()
+
+# Zusätzliche Spalten für Bounding Box und Layer-Infos
+try:
+    cursor.execute("ALTER TABLE files ADD COLUMN bbox TEXT")
+except sqlite3.OperationalError:
+    pass
+try:
+    cursor.execute("ALTER TABLE files ADD COLUMN layer_info TEXT")
+except sqlite3.OperationalError:
+    pass
 conn.commit()
 
 # Verzeichnisse erstellen
@@ -346,13 +357,30 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @app.get("/files")
-async def list_files(user: str = Depends(verify_token), status: str = None):
-    """Alle hochgeladenen Dateien auflisten, optional nach Status filtern"""
+async def list_files(
+    user: str = Depends(verify_token),
+    status: str = None,
+    uploaded_by: str = None,
+    date_from: str = Query(None, description="YYYY-MM-DD"),
+    date_to: str = Query(None, description="YYYY-MM-DD")
+):
+    """Dateien mit erweiterten Filtern auflisten"""
     try:
+        query = "SELECT * FROM files WHERE 1=1"
+        params = []
         if status:
-            cursor.execute("SELECT * FROM files WHERE status = ?", (status,))
-        else:
-            cursor.execute("SELECT * FROM files")
+            query += " AND status = ?"
+            params.append(status)
+        if uploaded_by:
+            query += " AND uploaded_by = ?"
+            params.append(uploaded_by)
+        if date_from:
+            query += " AND uploaded_at >= ?"
+            params.append(date_from)
+        if date_to:
+            query += " AND uploaded_at <= ?"
+            params.append(date_to)
+        cursor.execute(query, tuple(params))
         rows = cursor.fetchall()
         files = [
             {
@@ -364,7 +392,9 @@ async def list_files(user: str = Depends(verify_token), status: str = None):
                 "uploaded_at": row[5],
                 "uploaded_by": row[6],
                 "status": row[7] if len(row) > 7 else 'uploaded',
-                "error_message": row[8] if len(row) > 8 else None
+                "error_message": row[8] if len(row) > 8 else None,
+                "bbox": row[9] if len(row) > 9 else None,
+                "layer_info": row[10] if len(row) > 10 else None
             }
             for row in rows
         ]
@@ -401,7 +431,7 @@ async def get_file_details(file_id: str, user: str = Depends(verify_token)):
 
 @app.post("/convert/{file_id}")
 async def convert_file(file_id: str, user: str = Depends(verify_token)):
-    """DXF zu GeoPDF konvertieren"""
+    """DXF zu GeoPDF konvertieren und Metadaten speichern"""
     try:
         cursor.execute("UPDATE files SET status = ? WHERE id = ?", ("converting", file_id))
         conn.commit()
@@ -412,8 +442,16 @@ async def convert_file(file_id: str, user: str = Depends(verify_token)):
         dxf_path = row[2]
         geopdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
         try:
-            dxf_to_geopdf(dxf_path, geopdf_path)
-            cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL WHERE id = ?", (True, geopdf_path, "converted", file_id))
+            # Konvertierung und Metadaten extrahieren
+            bbox, layer_info = None, None
+            try:
+                result = dxf_to_geopdf(dxf_path, geopdf_path, return_metadata=True)
+                if isinstance(result, dict):
+                    bbox = result.get('bbox')
+                    layer_info = result.get('layer_info')
+            except TypeError:
+                dxf_to_geopdf(dxf_path, geopdf_path)
+            cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ? WHERE id = ?", (True, geopdf_path, "converted", bbox, layer_info, file_id))
             conn.commit()
             return {"message": "File converted successfully", "fileName": row[1]}
         except Exception as e:
@@ -422,6 +460,32 @@ async def convert_file(file_id: str, user: str = Depends(verify_token)):
             logger.error(f"Error converting file {file_id}: {e}")
             raise HTTPException(status_code=500, detail="Conversion failed")
     except Exception as e:
+        logger.error(f"Error converting file {file_id}: {e}")
+        raise HTTPException(status_code=500, detail="Conversion failed")
+
+@app.post("/dxf2geopdf/{file_id}")
+async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token)):
+    """DXF zu GeoPDF Konvertierung auslösen"""
+    try:
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        dxf_path = row[2]
+        geopdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
+
+        # Konvertierung durchführen
+        dxf_to_geopdf(dxf_path, geopdf_path)
+
+        # Datei als konvertiert markieren
+        cursor.execute("UPDATE files SET converted = ?, path = ?, status = ? WHERE id = ?", (True, geopdf_path, "converted", file_id))
+        conn.commit()
+
+        return {"message": "File converted successfully", "fileName": row[1]}
+    except Exception as e:
+        cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
+        conn.commit()
         logger.error(f"Error converting file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Conversion failed")
 
@@ -451,32 +515,6 @@ async def list_tms():
     except Exception as e:
         logger.error(f"Failed to list TMS layers: {e}")
         raise HTTPException(status_code=500, detail="Failed to list TMS layers")
-
-@app.post("/dxf2geopdf/{file_id}")
-async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token)):
-    """DXF zu GeoPDF Konvertierung auslösen"""
-    try:
-        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-        row = cursor.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="File not found")
-
-        dxf_path = row[2]
-        geopdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
-
-        # Konvertierung durchführen
-        dxf_to_geopdf(dxf_path, geopdf_path)
-
-        # Datei als konvertiert markieren
-        cursor.execute("UPDATE files SET converted = ?, path = ?, status = ? WHERE id = ?", (True, geopdf_path, "converted", file_id))
-        conn.commit()
-
-        return {"message": "File converted successfully", "fileName": row[1]}
-    except Exception as e:
-        cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
-        conn.commit()
-        logger.error(f"Error converting file {file_id}: {e}")
-        raise HTTPException(status_code=500, detail="Conversion failed")
 
 @app.get("/download/{file_id}")
 async def download_file(file_id: str, user: str = Depends(verify_token)):
@@ -553,6 +591,22 @@ def get_openapi_json():
 def get_docs():
     """Swagger UI bereitstellen"""
     return get_swagger_ui_html(openapi_url="/openapi.json", title="DXF to GeoPDF API Docs")
+
+@app.delete("/cleanup")
+async def cleanup_files(days: int = 7, status: str = "error"):
+    """Automatische Bereinigung alter/gefehlerter Dateien"""
+    import datetime
+    cutoff = (datetime.datetime.utcnow() - datetime.timedelta(days=days)).isoformat()
+    cursor.execute("SELECT id, path FROM files WHERE status = ? AND uploaded_at < ?", (status, cutoff))
+    rows = cursor.fetchall()
+    deleted = 0
+    for file_id, path in rows:
+        if os.path.exists(path):
+            os.remove(path)
+        cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
+        deleted += 1
+    conn.commit()
+    return {"deleted": deleted, "status": status, "older_than": days}
 
 if __name__ == "__main__":
     import uvicorn
