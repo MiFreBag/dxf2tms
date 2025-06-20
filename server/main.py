@@ -21,7 +21,7 @@ from docker import from_env
 import sqlite3
 
 # Import der DXF-Konvertierungsfunktion
-from convert_dxf_to_geopdf import dxf_to_geopdf
+from convert_dxf_to_geopdf import dxf_to_geopdf, convert_pdf_to_tms
 
 # Logging konfigurieren
 logging.basicConfig(level=logging.INFO)
@@ -518,6 +518,26 @@ async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token)
             cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
         logger.error(f"Error converting file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Conversion failed")
+
+@app.post("/tms/{file_id}")
+async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(verify_token)):
+    """GeoPDF zu TMS (Tile Map Service) konvertieren"""
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+            row = cursor.fetchone()
+        if not row or not row[2] or not row[4]:
+            raise HTTPException(status_code=404, detail="GeoPDF nicht gefunden oder nicht konvertiert")
+        geopdf_path = row[2] if row[2].endswith('.pdf') else os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
+        if not os.path.exists(geopdf_path):
+            raise HTTPException(status_code=404, detail="GeoPDF file missing on disk")
+        tms_dir = os.path.join(STATIC_ROOT, file_id)
+        convert_pdf_to_tms(geopdf_path, tms_dir, minzoom=0, maxzoom=maxzoom)
+        return {"message": "TMS erfolgreich erzeugt", "tms_dir": tms_dir, "url": f"/static/{file_id}"}
+    except Exception as e:
+        logger.error(f"TMS-Erstellung fehlgeschlagen: {e}")
+        raise HTTPException(status_code=500, detail=f"TMS-Erstellung fehlgeschlagen: {e}")
 
 @app.get("/tms")
 async def list_tms():

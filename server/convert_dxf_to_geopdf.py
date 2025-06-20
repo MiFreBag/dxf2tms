@@ -361,6 +361,32 @@ def convert_dxf_to_geopdf(dxf_path: str, pdf_path: str) -> None:
     """Legacy-Funktion für Rückwärtskompatibilität"""
     dxf_to_geopdf(dxf_path, pdf_path)
 
+def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: int = 6) -> bool:
+    """
+    Konvertiert ein GeoPDF in einen TMS-Ordner (Tiles) mit gdal2tiles.py
+    """
+    import subprocess
+    try:
+        if not os.path.exists(tms_dir):
+            os.makedirs(tms_dir)
+        cmd = [
+            sys.executable, '-m', 'gdal2tiles',
+            '-z', f'{minzoom}-{maxzoom}',
+            '-r', 'bilinear',
+            '-w', 'none',
+            pdf_path, tms_dir
+        ]
+        logger.info(f"Starte gdal2tiles: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            logger.error(f"gdal2tiles Fehler: {result.stderr}")
+            raise Exception(f"gdal2tiles failed: {result.stderr}")
+        logger.info(f"TMS erfolgreich erzeugt: {tms_dir}")
+        return True
+    except Exception as e:
+        logger.error(f"TMS-Konvertierung fehlgeschlagen: {e}")
+        raise
+
 if __name__ == "__main__":
     # Beispielverwendung/Test
     if len(sys.argv) != 3:

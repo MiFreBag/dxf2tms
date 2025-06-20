@@ -39,6 +39,10 @@ function App() {
   const [convertParams, setConvertParams] = useState({ file: null, pageSize: 'A4', dpi: 300 });
   const [previewBlobs, setPreviewBlobs] = useState([]); // {fileId, fileName, url}
 
+  // State für TMS-Dialog
+  const [showTmsDialog, setShowTmsDialog] = useState(false);
+  const [tmsParams, setTmsParams] = useState({ file: null, maxzoom: 6 });
+
   // Fetch initial data
   const fetchFiles = useCallback(async () => {
     try {
@@ -622,6 +626,13 @@ function App() {
                                         Download
                                         {renderProgress(file)}
                                       </button>
+                                      <button
+                                        onClick={() => handleOpenTmsDialog(file)}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-md transition-colors"
+                                      >
+                                        <Layers className="w-3 h-3" />
+                                        TMS erzeugen
+                                      </button>
                                     </div>
                                   )}
                                   <button 
@@ -775,6 +786,30 @@ function App() {
       <div className="flex justify-end gap-2">
         <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setShowConvertDialog(false)}>Abbrechen</button>
         <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={() => handleConvert(convertParams.file, convertParams.pageSize, convertParams.dpi)}>Konvertieren</button>
+      </div>
+    </div>
+  </div>
+)}
+
+      {/* Dialog für TMS-Optionen */}
+      {showTmsDialog && (
+  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg shadow-lg p-6 w-80">
+      <h2 className="text-lg font-bold mb-4">TMS-Optionen</h2>
+      <div className="mb-3">
+        <label className="block text-sm font-medium">Maximale Zoomstufe</label>
+        <input
+          type="number"
+          min="0"
+          max="22"
+          className="w-full border rounded px-2 py-1"
+          value={tmsParams.maxzoom}
+          onChange={e => setTmsParams(p => ({ ...p, maxzoom: e.target.value }))}
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setShowTmsDialog(false)}>Abbrechen</button>
+        <button className="px-3 py-1 bg-yellow-600 text-white rounded" onClick={() => handleCreateTms(tmsParams.file, tmsParams.maxzoom)}>TMS erzeugen</button>
       </div>
     </div>
   </div>
