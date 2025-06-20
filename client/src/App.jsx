@@ -31,6 +31,9 @@ function App() {
   const [page, setPage] = useState('upload')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Fortschrittsanzeige-Status
+  const [progress, setProgress] = useState({});
+
   // Fetch initial data
   const fetchFiles = useCallback(async () => {
     try {
@@ -199,33 +202,45 @@ function App() {
   }
 
   const handlePreview = (file) => {
-    if (file.converted && file.previewUrl) {
-      window.open(file.previewUrl, '_blank')
+    console.info('Vorschau-Klick:', file);
+    if (file.converted) {
+      const url = `/api/download/${file.id}`;
+      window.open(url, '_blank');
+      addMessage('Vorschau geöffnet', 'success');
     } else {
-      addMessage('Keine Vorschau verfügbar', 'warning')
+      addMessage('Keine Vorschau verfügbar', 'warning');
+      console.warn('Vorschau nicht verfügbar:', file);
     }
   }
 
   const handleDownload = (file) => {
-    if (file.converted && file.downloadUrl) {
-      const link = document.createElement('a')
-      link.href = file.downloadUrl
-      link.download = file.name.replace(/\.[^/.]+$/, '') + '_converted.tms'
-      link.click()
-      addMessage('Download gestartet', 'success')
+    console.info('Download-Klick:', file);
+    if (file.converted) {
+      const url = `/api/download/${file.id}`;
+      setProgress(prev => ({ ...prev, [file.id]: 'downloading' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.name.replace(/\.[^/.]+$/, '') + '_converted.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setProgress(prev => ({ ...prev, [file.id]: 'done' }));
+      addMessage('Download gestartet', 'success');
+    } else {
+      addMessage('Download nicht verfügbar', 'error');
+      console.warn('Download nicht verfügbar:', file);
     }
   }
 
-  const handleDownloadGeoPDF = (file) => {
-    if (file.converted && file.geopdfPath) {
-      const link = document.createElement('a');
-      link.href = file.geopdfPath;
-      link.download = file.name.replace(/\.[^/.]+$/, '') + '_converted.pdf';
-      link.click();
-      addMessage('GeoPDF-Download gestartet', 'success');
-    } else {
-      addMessage('GeoPDF nicht verfügbar', 'error');
+  // Fortschrittsanzeige im UI
+  const renderProgress = (file) => {
+    if (progress[file.id] === 'downloading') {
+      return <span className="text-blue-500 animate-pulse ml-2">Download läuft...</span>;
     }
+    if (progress[file.id] === 'done') {
+      return <span className="text-green-600 ml-2">Fertig!</span>;
+    }
+    return null;
   };
 
   const handleSelectFile = (fileId) => {
@@ -534,6 +549,7 @@ function App() {
                                       >
                                         <FileText className="w-3 h-3" />
                                         Vorschau
+                                        {renderProgress(file)}
                                       </button>
                                       <button 
                                         onClick={() => handleDownload(file)}
@@ -541,6 +557,7 @@ function App() {
                                       >
                                         <Download className="w-3 h-3" />
                                         Download
+                                        {renderProgress(file)}
                                       </button>
                                       <button 
                                         onClick={() => handleDownloadGeoPDF(file)}
