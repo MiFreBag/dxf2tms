@@ -232,7 +232,19 @@ class DXFToGeoPDFConverter:
             title_item.attemptMove(QgsLayoutPoint(10, 5))
             title_item.attemptResize(QgsLayoutSize(page_width - 20, 15, QgsUnitTypes.LayoutMillimeters))
             layout.addLayoutItem(title_item)
-            
+
+            # Bounding Box und SRS als Text einblenden
+            extent = layer.extent()
+            bbox_text = f"BBox: [{extent.xMinimum():.2f}, {extent.yMinimum():.2f}, {extent.xMaximum():.2f}, {extent.yMaximum():.2f}]"
+            srs_text = f"SRS: {layer.crs().authid()}"
+            info_text = f"{bbox_text} | {srs_text}"
+            info_item = QgsLayoutItemLabel(layout)
+            info_item.setText(info_text)
+            info_item.setFont(QFont("Arial", 10))
+            info_item.attemptMove(QgsLayoutPoint(10, 20))
+            info_item.attemptResize(QgsLayoutSize(page_width - 20, 10, QgsUnitTypes.LayoutMillimeters))
+            layout.addLayoutItem(info_item)
+
             # Maßstabsleiste hinzufügen
             scalebar_item = QgsLayoutItemScaleBar(layout)
             scalebar_item.setLinkedMap(map_item)
@@ -244,8 +256,7 @@ class DXFToGeoPDFConverter:
             scalebar_item.attemptResize(QgsLayoutSize(60, 10, QgsUnitTypes.LayoutMillimeters))
             layout.addLayoutItem(scalebar_item)
             
-            logger.info("Layout elements added successfully")
-            
+            logger.info("Layout elements (Titel, BBox, SRS) added successfully")
         except Exception as e:
             logger.warning(f"Failed to add some layout elements: {e}")
     
