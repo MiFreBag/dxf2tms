@@ -81,14 +81,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# SQLite-Datenbank initialisieren
 DB_PATH = "files.db"
-conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-conn.execute("PRAGMA journal_mode=WAL;")  # WAL-Modus für bessere Parallelisierung
-# Kein globaler Cursor mehr!
 
-# Tabelle erstellen
-with conn:
+def get_db():
+    db = sqlite3.connect(DB_PATH, check_same_thread=False)
+    db.execute("PRAGMA journal_mode=WAL;")
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Initialisierung und Migration (einmalig beim Start, nicht für jede Anfrage)
+with sqlite3.connect(DB_PATH) as conn:
+    conn.execute("PRAGMA journal_mode=WAL;")
     cursor = conn.cursor()
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS files (
@@ -102,14 +107,11 @@ with conn:
     )
     """)
     conn.commit()
-
-# Erweiterung der Tabelle um weitere Metadatenfelder
-with conn:
-    cursor = conn.cursor()
+    # Erweiterung der Tabelle um weitere Metadatenfelder
     try:
         cursor.execute("ALTER TABLE files ADD COLUMN status TEXT DEFAULT 'uploaded'")
     except sqlite3.OperationalError:
-        pass  # Spalte existiert evtl. schon
+        pass
     try:
         cursor.execute("ALTER TABLE files ADD COLUMN error_message TEXT")
     except sqlite3.OperationalError:
@@ -329,7 +331,7 @@ def get_pdf_metadata(pdf_path: str):
         raise
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_token)):
+async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """DXF oder TIF/GeoTIFF Datei hochladen"""
     try:
         logger.info("Upload-Endpoint aufgerufen")
@@ -353,12 +355,12 @@ async def upload_file(file: UploadFile = File(...), user: str = Depends(verify_t
             f.write(content)
 
         # Metadaten in SQLite speichern
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO files (id, name, path, size, converted, uploaded_at, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (file_id, file.filename, save_path, len(content), False, datetime.utcnow().isoformat(), user)
-            )
+        cursor = db.cursor()
+        cursor.execute(
+            "INSERT INTO files (id, name, path, size, converted, uploaded_at, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (file_id, file.filename, save_path, len(content), False, datetime.utcnow().isoformat(), user)
+        )
+        db.commit()
 
         logger.info(f"Datei erfolgreich hochgeladen: {file.filename} (ID: {file_id})")
         return {"id": file_id, "name": file.filename, "path": save_path, "size": len(content), "converted": False, "uploaded_at": datetime.utcnow().isoformat(), "uploaded_by": user}
@@ -373,7 +375,8 @@ async def list_files(
     status: str = None,
     uploaded_by: str = None,
     date_from: str = Query(None, description="YYYY-MM-DD"),
-    date_to: str = Query(None, description="YYYY-MM-DD")
+    date_to: str = Query(None, description="YYYY-MM-DD"),
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Dateien mit erweiterten Filtern auflisten"""
     try:
@@ -391,10 +394,9 @@ async def list_files(
         if date_to:
             query += " AND uploaded_at <= ?"
             params.append(date_to)
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute(query, tuple(params))
-            rows = cursor.fetchall()
+        cursor = db.cursor()
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
         files = [
             {
                 "id": row[0],
@@ -418,13 +420,12 @@ async def list_files(
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Dateien")
 
 @app.get("/files/{file_id}")
-async def get_file_details(file_id: str, user: str = Depends(verify_token)):
+async def get_file_details(file_id: str, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """Details zu einer Datei abrufen"""
     try:
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-            row = cursor.fetchone()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
 
@@ -453,17 +454,16 @@ async def convert_file(
     file_id: str,
     user: str = Depends(verify_token),
     page_size: str = "A4",
-    dpi: int = 300
+    dpi: int = 300,
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """DXF oder Raster zu GeoPDF konvertieren und Metadaten speichern (mit Parametern)"""
     try:
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE files SET status = ? WHERE id = ?", ("converting", file_id))
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-            row = cursor.fetchone()
+        cursor = db.cursor()
+        cursor.execute("UPDATE files SET status = ? WHERE id = ?", ("converting", file_id))
+        db.commit()
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
         input_path = row[2]
@@ -482,17 +482,14 @@ async def convert_file(
                     dxf_to_geopdf(input_path, geopdf_path, page_size=page_size, dpi=dpi)
             elif ext in [".tif", ".tiff", ".geotiff"]:
                 raster_to_geopdf(input_path, geopdf_path, dpi=dpi, page_size=page_size)
-                # Metadaten ggf. mit GDAL auslesen (optional)
             else:
                 raise HTTPException(status_code=400, detail="Unsupported file type for conversion")
-            with conn:
-                cursor = conn.cursor()
-                cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ?, srs = ? WHERE id = ?", (True, geopdf_path, "converted", bbox, layer_info, srs, file_id))
+            cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ?, srs = ? WHERE id = ?", (True, geopdf_path, "converted", bbox, layer_info, srs, file_id))
+            db.commit()
             return {"message": "File converted successfully", "fileName": row[1], "page_size": page_size, "dpi": dpi, "bbox": bbox, "srs": srs}
         except Exception as e:
-            with conn:
-                cursor = conn.cursor()
-                cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
+            cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
+            db.commit()
             logger.error(f"Error converting file {file_id}: {e}")
             raise HTTPException(status_code=500, detail="Conversion failed")
     except Exception as e:
@@ -500,13 +497,12 @@ async def convert_file(
         raise HTTPException(status_code=500, detail="Conversion failed")
 
 @app.post("/dxf2geopdf/{file_id}")
-async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token)):
+async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """DXF zu GeoPDF Konvertierung auslösen"""
     try:
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-            row = cursor.fetchone()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
 
@@ -517,26 +513,23 @@ async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token)
         dxf_to_geopdf(dxf_path, geopdf_path)
 
         # Datei als konvertiert markieren
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE files SET converted = ?, path = ?, status = ? WHERE id = ?", (True, geopdf_path, "converted", file_id))
+        cursor.execute("UPDATE files SET converted = ?, path = ?, status = ? WHERE id = ?", (True, geopdf_path, "converted", file_id))
+        db.commit()
 
         return {"message": "File converted successfully", "fileName": row[1]}
     except Exception as e:
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
+        cursor.execute("UPDATE files SET status = ?, error_message = ? WHERE id = ?", ("error", str(e), file_id))
+        db.commit()
         logger.error(f"Error converting file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Conversion failed")
 
 @app.post("/tms/{file_id}")
-async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(verify_token)):
+async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """GeoPDF zu TMS (Tile Map Service) konvertieren"""
     try:
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-            row = cursor.fetchone()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
         if not row or not row[2] or not row[4]:
             raise HTTPException(status_code=404, detail="GeoPDF nicht gefunden oder nicht konvertiert")
         geopdf_path = row[2] if row[2].endswith('.pdf') else os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
@@ -550,7 +543,7 @@ async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(v
         raise HTTPException(status_code=500, detail=f"TMS-Erstellung fehlgeschlagen: {e}")
 
 @app.get("/tms")
-async def list_tms():
+async def list_tms(db: sqlite3.Connection = Depends(get_db)):
     """Alle TMS Layer auflisten inkl. Metadaten"""
     layers = []
     try:
@@ -564,10 +557,9 @@ async def list_tms():
                         with open(config_path) as f:
                             config = json.load(f)
                     # Hole Metadaten aus DB
-                    with conn:
-                        cursor = conn.cursor()
-                        cursor.execute("SELECT name, bbox, srs FROM files WHERE id = ?", (name,))
-                        row = cursor.fetchone()
+                    cursor = db.cursor()
+                    cursor.execute("SELECT name, bbox, srs FROM files WHERE id = ?", (name,))
+                    row = cursor.fetchone()
                     layers.append({
                         "id": name,
                         "url": f"/static/{name}",
@@ -582,14 +574,13 @@ async def list_tms():
         raise HTTPException(status_code=500, detail="Failed to list TMS layers")
 
 @app.get("/download/{file_id}")
-async def download_file(file_id: str, request: Request, user: str = Depends(verify_token)):
+async def download_file(file_id: str, request: Request, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """GeoPDF Datei herunterladen"""
     try:
         logger.info(f"Download-Request für Datei: {file_id} von {request.client.host}")
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-            row = cursor.fetchone()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
         if not row or not row[2] or not row[4]:  # row[2]=Pfad, row[4]=converted
             logger.warning(f"Download: Datei nicht gefunden oder nicht konvertiert: {file_id}")
             raise HTTPException(status_code=404, detail="GeoPDF not found")
@@ -609,37 +600,22 @@ async def download_file(file_id: str, request: Request, user: str = Depends(veri
         raise HTTPException(status_code=500, detail="Download failed")
 
 @app.delete("/files/{file_id}")
-async def delete_file(file_id: str, user: str = Depends(verify_token)):
-    """Datei löschen"""
+async def delete_file(file_id: str, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     try:
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
-            row = cursor.fetchone()
+        cursor = db.cursor()
+        cursor.execute("SELECT path FROM files WHERE id = ?", (file_id,))
+        row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
-
-        # Dateien löschen
-        dxf_path = row[2]
-        pdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
-
-        for path in [dxf_path, pdf_path]:
-            if os.path.exists(path):
-                try:
-                    os.remove(path)
-                except Exception as e:
-                    logger.warning(f"Fehler beim Löschen von {path}: {e}")
-
-        # Aus Datenbank entfernen
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
-
-        logger.info(f"File deleted: {file_id}")
-        return {"message": "File deleted successfully"}
+        file_path = row[0]
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
+        db.commit()
+        return {"message": "Datei erfolgreich gelöscht"}
     except Exception as e:
-        logger.error(f"Delete failed for {file_id}: {e}")
-        raise HTTPException(status_code=500, detail="Delete failed")
+        logger.error(f"Fehler beim Löschen der Datei: {e}")
+        raise HTTPException(status_code=500, detail="Fehler beim Löschen der Datei")
 
 @app.get("/containers")
 async def get_container_status(user: str = Depends(verify_token)):
