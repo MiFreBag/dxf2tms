@@ -270,6 +270,8 @@ function App() {
         addMessage('Datei erfolgreich gelöscht', 'success')
         await fetchFiles()
         setSelectedFiles(prev => prev.filter(id => id !== fileId))
+        // UI-Feedback für Kartenansicht: Layer wurde gelöscht
+        addMessage('Layer wurde aus der Kartenansicht entfernt.', 'info')
       } else {
         throw new Error('Delete failed')
       }
