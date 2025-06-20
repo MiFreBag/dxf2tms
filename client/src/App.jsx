@@ -31,6 +31,7 @@ function App() {
   const [page, setPage] = useState('upload')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [progress, setProgress] = useState({});
+  const [dockerServicesData, setDockerServicesData] = useState([]);
 
   // Neue States für Konvertierungsparameter und Dialog
   const [showConvertDialog, setShowConvertDialog] = useState(false);
@@ -93,13 +94,39 @@ function App() {
     }
   }, [token]);
 
+  const fetchDockerServices = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API}/containers`, { // Endpoint from ServiceTaskManager
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Assuming the backend response has a 'containers' key like in ServiceTaskManager's axios call
+        // or it's directly an array.
+        setDockerServicesData(data.containers || data || []);
+      } else if (response.status === 403) {
+        console.error('Token abgelaufen beim Laden der Container-Daten');
+        handleTokenExpiration();
+      } else {
+        addMessage(`Fehler beim Abrufen der Container-Daten: ${response.status}`, 'error');
+      }
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Container-Daten:', error);
+      addMessage('Netzwerkfehler beim Abrufen der Container-Daten.', 'error');
+    }
+  }, [token, addMessage]);
+
   useEffect(() => {
     if (!token) {
         setPage('login');
     } else {
         fetchFiles();
+        fetchDockerServices();
     }
-  }, [token, fetchFiles]);
+  }, [token, fetchFiles, fetchDockerServices]);
 
   const handleTokenExpiration = () => {
     localStorage.removeItem('token');
@@ -723,12 +750,13 @@ function App() {
               </div>
             </div>
           )}
-               {page === 'service-task-manager' && (
-            <ServiceTaskManager />
+          {page === 'service-task-manager' && (
+            // ServiceTaskManager müsste aktualisiert werden, um dieses 'services'-Prop zu verwenden
+            <ServiceTaskManager services={dockerServicesData} />
           )}
 
           {page === 'container-monitor' && (
-            <ContainerMonitor services={[]} />
+            <ContainerMonitor services={dockerServicesData} />
           )}
 
           {page === 'geopos-client' && (

@@ -8,50 +8,56 @@ const ContainerMonitor = ({ services }) => {
   const [volumes, setVolumes] = useState([]);
   const [networks, setNetworks] = useState([]);
   const [activeTab, setActiveTab] = useState('containers');
-  
-  // Mock Container Data
+
   useEffect(() => {
-    const mockContainers = services.map(service => ({
-      id: `container-${service.id}`,
-      name: service.name.toLowerCase().replace(/\s+/g, '-'),
-      image: `mynuvision/${service.id}:latest`,
-      status: service.status === 'running' ? 'Up' : 'Exited',
-      state: service.status,
-      created: new Date(Date.now() - Math.random() * 86400000 * 30),
-      ports: [`${service.port}:${service.port}`],
-      cpu: service.cpu,
-      memory: service.memory,
-      memoryLimit: service.memoryMax,
-      restartCount: Math.floor(Math.random() * 5),
-      healthCheck: service.status === 'running' ? 'healthy' : 'unhealthy'
-    }));
-    
-    const mockImages = [
-      { id: 1, name: 'mynuvision/api-gateway', tag: 'latest', size: '125MB', created: '2 days ago' },
-      { id: 2, name: 'postgres', tag: '14-alpine', size: '82MB', created: '1 week ago' },
-      { id: 3, name: 'redis', tag: '7-alpine', size: '32MB', created: '2 weeks ago' },
-      { id: 4, name: 'nginx', tag: '1.21-alpine', size: '23MB', created: '1 month ago' },
-      { id: 5, name: 'mynuvision/video-service', tag: 'latest', size: '342MB', created: '3 days ago' },
-      { id: 6, name: 'mynuvision/ai-service', tag: 'latest', size: '1.2GB', created: '1 day ago' }
-    ];
-    
-    const mockVolumes = [
-      { name: 'postgres-data', driver: 'local', size: '2.3GB', mountPoint: '/var/lib/docker/volumes/postgres-data' },
-      { name: 'redis-data', driver: 'local', size: '125MB', mountPoint: '/var/lib/docker/volumes/redis-data' },
-      { name: 'video-cache', driver: 'local', size: '15.6GB', mountPoint: '/var/lib/docker/volumes/video-cache' },
-      { name: 'logs', driver: 'local', size: '856MB', mountPoint: '/var/lib/docker/volumes/logs' }
-    ];
-    
-    const mockNetworks = [
-      { name: 'mynuvision-network', driver: 'bridge', subnet: '172.20.0.0/16', containers: 8 },
-      { name: 'database-network', driver: 'bridge', subnet: '172.21.0.0/16', containers: 3 },
-      { name: 'monitoring-network', driver: 'bridge', subnet: '172.22.0.0/16', containers: 4 }
-    ];
-    
-    setContainers(mockContainers);
-    setImages(mockImages);
-    setVolumes(mockVolumes);
-    setNetworks(mockNetworks);
+    if (services && Array.isArray(services)) {
+      const fetchedContainers = services.map(service => {
+        // Backend-Datenstruktur (Beispiel aus ServiceTaskManager):
+        // { id: string, name: string, status: string, image: string[] }
+        // ContainerMonitor erwartet:
+        // { id, name, image, status (Anzeige), state (roh), created, ports, cpu, memory, memoryLimit, restartCount, healthCheck }
+
+        let displayStatus = 'Unknown';
+        let health = 'unknown';
+        if (service.status) {
+          const lowerStatus = service.status.toLowerCase();
+          if (lowerStatus.includes('running') || lowerStatus.includes('up')) {
+            displayStatus = 'Up';
+            health = 'healthy';
+          } else if (lowerStatus.includes('exited') || lowerStatus.includes('stopped')) {
+            displayStatus = 'Exited';
+            health = 'unhealthy';
+          } else if (lowerStatus.includes('starting')) {
+            displayStatus = 'Starting';
+            health = 'starting';
+          }
+        }
+
+        return {
+          id: service.id || `container-${Math.random().toString(36).substr(2, 9)}`,
+          name: service.name || 'Unnamed Container',
+          image: service.image && service.image.length > 0 ? service.image.join(', ') : 'N/A',
+          status: displayStatus, // Für 'Up' oder 'Exited' Anzeige
+          state: service.status || 'unknown', // Roher Status
+          created: new Date(), // Platzhalter, nicht vom Backend
+          ports: service.ports ? service.ports.join(', ') : ['N/A'], // Annahme: 'ports' könnte zum Backend hinzugefügt werden
+          cpu: service.cpu || 0, // Platzhalter
+          memory: service.memory || 0, // Platzhalter
+          memoryLimit: service.memoryMax || 0, // Platzhalter
+          restartCount: service.restartCount || 0, // Platzhalter
+          healthCheck: health, // Abgeleitet
+        };
+      });
+      setContainers(fetchedContainers);
+    } else {
+      setContainers([]);
+    }
+
+    // Für Images, Volumes, Networks haben wir noch keine Backend-Daten.
+    // Daher werden sie geleert oder auf leer gesetzt.
+    setImages([]);
+    setVolumes([]);
+    setNetworks([]);
   }, [services]);
   
   const getHealthColor = (status) => {
@@ -65,7 +71,8 @@ const ContainerMonitor = ({ services }) => {
   
   const formatSize = (size) => {
     if (typeof size === 'string') return size;
-    return `${size}MB`;
+    if (typeof size === 'number') return `${size}MB`; // Annahme MB, wenn Zahl
+    return 'N/A';
   };
   
   return (
@@ -105,7 +112,11 @@ const ContainerMonitor = ({ services }) => {
       
       {/* Container Tab */}
       {activeTab === 'containers' && (
-        <div className="space-y-3">
+        <div>
+          {containers.length === 0 && (
+            <p className="text-gray-500 dark:text-gray-400 p-4">Keine Container-Daten vom Backend geladen oder keine Container vorhanden.</p>
+          )}
+          <div className="space-y-3">
           {containers.map(container => (
             <div key={container.id} className="border dark:border-gray-700 rounded-lg p-4">
               <div className="flex justify-between items-start">
@@ -121,8 +132,8 @@ const ContainerMonitor = ({ services }) => {
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     <span>Image: {container.image}</span>
-                    <span className="mx-2">•</span>
-                    <span>Ports: {container.ports.join(', ')}</span>
+                    <span className="mx-2">•</span>                    
+                    <span>Ports: {Array.isArray(container.ports) ? container.ports.join(', ') : container.ports}</span>
                     <span className="mx-2">•</span>
                     <span>Restarts: {container.restartCount}</span>
                   </div>
@@ -160,11 +171,15 @@ const ContainerMonitor = ({ services }) => {
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
       
       {/* Images Tab */}
       {activeTab === 'images' && (
+        images.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 p-4">Keine Image-Daten vom Backend geladen.</p>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -192,10 +207,14 @@ const ContainerMonitor = ({ services }) => {
             </tbody>
           </table>
         </div>
+        )
       )}
       
       {/* Volumes Tab */}
       {activeTab === 'volumes' && (
+        volumes.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400 p-4">Keine Volume-Daten vom Backend geladen.</p>
+        ) : (
         <div className="space-y-3">
           {volumes.map((volume, index) => (
             <div key={index} className="border dark:border-gray-700 rounded-lg p-4">
@@ -217,10 +236,14 @@ const ContainerMonitor = ({ services }) => {
             </div>
           ))}
         </div>
+        )
       )}
       
       {/* Networks Tab */}
       {activeTab === 'networks' && (
+        networks.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400 p-4">Keine Netzwerk-Daten vom Backend geladen.</p>
+        ) : (
         <div className="space-y-3">
           {networks.map((network, index) => (
             <div key={index} className="border dark:border-gray-700 rounded-lg p-4">
@@ -239,6 +262,7 @@ const ContainerMonitor = ({ services }) => {
             </div>
           ))}
         </div>
+        )
       )}
       
       {/* Docker Stats Summary */}
@@ -271,4 +295,3 @@ const ContainerMonitor = ({ services }) => {
 };
 
 export default ContainerMonitor;
-
