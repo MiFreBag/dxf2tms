@@ -33,6 +33,9 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [progress, setProgress] = useState({});
   const [dockerServicesData, setDockerServicesData] = useState([]);
+  const [dockerContainers, setDockerContainers] = useState([]);
+  const [dockerImages, setDockerImages] = useState([]);
+  const [dockerVolumes, setDockerVolumes] = useState([]);
 
   // Neue States für Konvertierungsparameter und Dialog
   const [showConvertDialog, setShowConvertDialog] = useState(false);
@@ -110,16 +113,16 @@ function App() {
   const fetchDockerServices = useCallback(async () => {
     if (!token) return;
     try {
-      const response = await fetch(`${API}/containers`, { // Endpoint from ServiceTaskManager
+      const response = await fetch(`${API}/containers`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
       if (response.ok) {
         const data = await response.json();
-        // Assuming the backend response has a 'containers' key like in ServiceTaskManager's axios call
-        // or it's directly an array.
-        setDockerServicesData(data.containers || data || []);
+        setDockerContainers(data.containers || []);
+        setDockerImages(data.images || []);
+        setDockerVolumes(data.volumes || []);
       } else if (response.status === 403) {
         console.error('Token abgelaufen beim Laden der Container-Daten');
         handleTokenExpiration();
@@ -762,7 +765,11 @@ function App() {
           )}
 
           {page === 'container-monitor' && (
-            <ContainerMonitor services={dockerServicesData} />
+            <ContainerMonitor
+              containers={dockerContainers}
+              images={dockerImages}
+              volumes={dockerVolumes}
+            />
           )}
 
           {page === 'geopos-client' && (

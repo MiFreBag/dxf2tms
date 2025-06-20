@@ -299,11 +299,11 @@ const ServiceCard = ({ service, onAction, expanded, onToggleExpand }) => {
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
             <FaNetworkWired className="text-green-500" />
-            <span>↓ {formatBytes(service.network.in * 1024)}/s</span>
+            <span>↓ {formatBytes((service.network?.in || 0) * 1024)}/s</span>
           </div>
           <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
             <FaNetworkWired className="text-blue-500" />
-            <span>↑ {formatBytes(service.network.out * 1024)}/s</span>
+            <span>↑ {formatBytes((service.network?.out || 0) * 1024)}/s</span>
           </div>
         </div>
         
