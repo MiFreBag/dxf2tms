@@ -9,3 +9,8 @@ docker==6.1.3
 requests==2.31.0
 urllib3==1.26.18
 gdal2tiles==0.1.9
+
+# Neue Dependencies für System-Monitoring
+psutil==5.9.6          # System- und Prozess-Monitoring
+docker==6.1.3          # Docker API Client
+python-dateutil==2.8.2 # Datum/Zeit-Utilities

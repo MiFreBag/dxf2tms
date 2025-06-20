@@ -28,6 +28,18 @@ from controllers.jobController import get_all_jobs, jobs_db, thread_lock
 from routes.jobRoutes import router as job_router
 import threading
 
+# Integration in main.py - Fügen Sie diese Imports und Endpunkte hinzu
+
+# Am Anfang der Datei zu den bestehenden Imports hinzufügen:
+from system_metrics import (
+    get_system_metrics,
+    get_cpu_metrics, 
+    get_memory_metrics,
+    get_disk_metrics,
+    get_network_metrics,
+    metrics_collector
+)
+
 # Logging konfigurieren
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -845,6 +857,269 @@ async def start_maptiler_job(file_id: str, user: str = Depends(verify_token), db
     return {'job_id': job_id, 'status': 'queued'}
 
 app.include_router(job_router, prefix="/api/jobs")
+
+
+# Neue Systemmetriken-Endpunkte hinzufügen:
+
+@app.get("/api/system/metrics")
+async def system_metrics(current_user: dict = Depends(get_current_user)):
+    """
+    Vollständige Systemmetriken abrufen
+    
+    Liefert CPU, Memory, Disk, Network, Docker und Prozess-Metriken
+    """
+    try:
+        metrics = get_system_metrics()
+        
+        # Für Frontend-Kompatibilität: Flache Struktur für Hauptmetriken
+        frontend_metrics = {
+            "cpu": {
+                "usage": metrics["cpu"]["usage"],
+                "cores": metrics["cpu"]["cores"],
+                "loadAverage": metrics["cpu"]["loadAverage"]
+            },
+            "memory": {
+                "used": metrics["memory"]["used"],
+                "total": metrics["memory"]["total"],
+                "percentage": metrics["memory"]["percentage"],
+                "available": metrics["memory"]["available"]
+            },
+            "disk": {
+                "used": metrics["disk"]["used"],
+                "total": metrics["disk"]["total"],
+                "percentage": metrics["disk"]["percentage"],
+                "free": metrics["disk"]["free"]
+            },
+            "network": {
+                "bytesReceived": metrics["network"]["bytesReceived"],
+                "bytesSent": metrics["network"]["bytesSent"],
+                "packetsReceived": metrics["network"]["packetsReceived"],
+                "packetsSent": metrics["network"]["packetsSent"]
+            },
+            "uptime": metrics["system"]["uptime"],
+            "dockerVersion": metrics["system"]["dockerVersion"],
+            "hostname": metrics["system"]["hostname"],
+            "timestamp": metrics["timestamp"],
+            
+            # Vollständige Daten für erweiterte Ansichten
+            "detailed": metrics
+        }
+        
+        return frontend_metrics
+        
+    except Exception as e:
+        logger.error(f"Error fetching system metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch system metrics: {str(e)}")
+
+@app.get("/api/system/cpu")
+async def cpu_metrics(current_user: dict = Depends(get_current_user)):
+    """CPU-Metriken abrufen"""
+    try:
+        return get_cpu_metrics()
+    except Exception as e:
+        logger.error(f"Error fetching CPU metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch CPU metrics: {str(e)}")
+
+@app.get("/api/system/memory")
+async def memory_metrics(current_user: dict = Depends(get_current_user)):
+    """Memory-Metriken abrufen"""
+    try:
+        return get_memory_metrics()
+    except Exception as e:
+        logger.error(f"Error fetching memory metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch memory metrics: {str(e)}")
+
+@app.get("/api/system/disk")
+async def disk_metrics(current_user: dict = Depends(get_current_user)):
+    """Disk-Metriken abrufen"""
+    try:
+        return get_disk_metrics()
+    except Exception as e:
+        logger.error(f"Error fetching disk metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch disk metrics: {str(e)}")
+
+@app.get("/api/system/network")
+async def network_metrics(current_user: dict = Depends(get_current_user)):
+    """Network-Metriken abrufen"""
+    try:
+        return get_network_metrics()
+    except Exception as e:
+        logger.error(f"Error fetching network metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch network metrics: {str(e)}")
+
+@app.get("/api/system/processes")
+async def process_metrics(current_user: dict = Depends(get_current_user)):
+    """Prozess-Metriken abrufen"""
+    try:
+        return metrics_collector.get_process_metrics()
+    except Exception as e:
+        logger.error(f"Error fetching process metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch process metrics: {str(e)}")
+
+@app.get("/api/system/docker")
+async def docker_metrics(current_user: dict = Depends(get_current_user)):
+    """Docker-spezifische Metriken abrufen"""
+    try:
+        return metrics_collector.get_docker_metrics()
+    except Exception as e:
+        logger.error(f"Error fetching Docker metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch Docker metrics: {str(e)}")
+
+# Erweiterte Container-Endpunkte
+
+@app.get("/api/containers/{container_id}/stats")
+async def container_stats(container_id: str, current_user: dict = Depends(get_current_user)):
+    """Detaillierte Container-Statistiken abrufen"""
+    try:
+        if not metrics_collector.docker_client:
+            raise HTTPException(status_code=503, detail="Docker client not available")
+        
+        container = metrics_collector.docker_client.containers.get(container_id)
+        stats = container.stats(stream=False)
+        
+        # CPU-Nutzung berechnen
+        cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - stats['precpu_stats']['cpu_usage']['total_usage']
+        system_delta = stats['cpu_stats']['system_cpu_usage'] - stats['precpu_stats']['system_cpu_usage']
+        cpu_percent = 0.0
+        if system_delta > 0 and cpu_delta > 0:
+            cpu_percent = (cpu_delta / system_delta) * len(stats['cpu_stats']['cpu_usage']['percpu_usage']) * 100.0
+        
+        # Memory-Nutzung
+        memory_usage = stats['memory_stats']['usage']
+        memory_limit = stats['memory_stats']['limit']
+        memory_percent = (memory_usage / memory_limit) * 100.0 if memory_limit > 0 else 0
+        
+        # Network I/O
+        network_io = {"rx_bytes": 0, "tx_bytes": 0}
+        if 'networks' in stats:
+            for interface, data in stats['networks'].items():
+                network_io["rx_bytes"] += data['rx_bytes']
+                network_io["tx_bytes"] += data['tx_bytes']
+        
+        # Block I/O
+        block_io = {"read_bytes": 0, "write_bytes": 0}
+        if 'blkio_stats' in stats and 'io_service_bytes_recursive' in stats['blkio_stats']:
+            for entry in stats['blkio_stats']['io_service_bytes_recursive']:
+                if entry['op'] == 'Read':
+                    block_io["read_bytes"] += entry['value']
+                elif entry['op'] == 'Write':
+                    block_io["write_bytes"] += entry['value']
+        
+        return {
+            "container_id": container_id,
+            "name": container.name,
+            "cpu_percent": round(cpu_percent, 2),
+            "memory": {
+                "usage": memory_usage,
+                "limit": memory_limit,
+                "percent": round(memory_percent, 2)
+            },
+            "network": network_io,
+            "block_io": block_io,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=404, detail="Container not found")
+    except Exception as e:
+        logger.error(f"Error fetching container stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch container stats: {str(e)}")
+
+@app.get("/api/containers/{container_id}/logs")
+async def container_logs(
+    container_id: str, 
+    lines: int = 100,
+    since: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Container-Logs abrufen"""
+    try:
+        if not metrics_collector.docker_client:
+            raise HTTPException(status_code=503, detail="Docker client not available")
+        
+        container = metrics_collector.docker_client.containers.get(container_id)
+        
+        # Log-Parameter
+        log_kwargs = {
+            "tail": lines,
+            "timestamps": True
+        }
+        
+        if since:
+            log_kwargs["since"] = since
+        
+        logs = container.logs(**log_kwargs).decode('utf-8').strip()
+        log_lines = logs.split('\n') if logs else []
+        
+        return {
+            "container_id": container_id,
+            "name": container.name,
+            "logs": log_lines,
+            "lines_returned": len(log_lines),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=404, detail="Container not found")
+    except Exception as e:
+        logger.error(f"Error fetching container logs: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch container logs: {str(e)}")
+
+# Health Check für System-Monitoring
+@app.get("/api/system/health")
+async def system_health():
+    """System-Health-Check"""
+    try:
+        # Basis-Systemchecks
+        health_status = {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "checks": {}
+        }
+        
+        # CPU-Check
+        cpu_usage = metrics_collector.get_cpu_metrics()["usage"]
+        health_status["checks"]["cpu"] = {
+            "status": "critical" if cpu_usage > 95 else "warning" if cpu_usage > 80 else "healthy",
+            "usage": cpu_usage
+        }
+        
+        # Memory-Check
+        memory = metrics_collector.get_memory_metrics()
+        health_status["checks"]["memory"] = {
+            "status": "critical" if memory["percentage"] > 95 else "warning" if memory["percentage"] > 80 else "healthy",
+            "usage": memory["percentage"]
+        }
+        
+        # Disk-Check
+        disk = metrics_collector.get_disk_metrics()
+        health_status["checks"]["disk"] = {
+            "status": "critical" if disk["percentage"] > 95 else "warning" if disk["percentage"] > 80 else "healthy",
+            "usage": disk["percentage"]
+        }
+        
+        # Docker-Check
+        docker_available = metrics_collector.docker_client is not None
+        health_status["checks"]["docker"] = {
+            "status": "healthy" if docker_available else "warning",
+            "available": docker_available
+        }
+        
+        # Gesamtstatus bestimmen
+        check_statuses = [check["status"] for check in health_status["checks"].values()]
+        if "critical" in check_statuses:
+            health_status["status"] = "critical"
+        elif "warning" in check_statuses:
+            health_status["status"] = "warning"
+        
+        return health_status
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 if __name__ == "__main__":
     import uvicorn
