@@ -1,20 +1,149 @@
-// ContainerMonitor.jsx - Docker Container Monitoring Extension
-import React, { useState } from 'react';
-import { FaDocker, FaCube, FaLayerGroup, FaNetworkWired, FaHdd } from 'react-icons/fa';
+// Enhanced ContainerMonitor.jsx - Docker Container & Host System Monitoring
+import React, { useState, useEffect } from 'react';
+import { 
+  FaDocker, 
+  FaCube, 
+  FaLayerGroup, 
+  FaNetworkWired, 
+  FaHdd, 
+  FaServer, 
+  FaMicrochip, 
+  FaMemory,
+  FaChartLine,
+  FaRefresh
+} from 'react-icons/fa';
 
-const ContainerMonitor = ({ containers = [], images = [], volumes = [], onViewLogs }) => {
-  const [activeTab, setActiveTab] = useState('containers');
+const ContainerMonitor = ({ 
+  containers = [], 
+  images = [], 
+  volumes = [], 
+  onViewLogs,
+  token 
+}) => {
+  const [activeTab, setActiveTab] = useState('overview');
   const [showLogs, setShowLogs] = useState(false);
   const [currentLogs, setCurrentLogs] = useState({ containerName: '', logs: [] });
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  
+  // Host system metrics state
+  const [hostMetrics, setHostMetrics] = useState({
+    cpu: { usage: 0, cores: 0, loadAverage: [0, 0, 0] },
+    memory: { used: 0, total: 0, percentage: 0, available: 0 },
+    disk: { used: 0, total: 0, percentage: 0, free: 0 },
+    network: { bytesReceived: 0, bytesSent: 0, packetsReceived: 0, packetsSent: 0 },
+    uptime: 0,
+    dockerVersion: '',
+    lastUpdated: null
+  });
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
+  const [metricsError, setMetricsError] = useState(null);
+
+  // Fetch host system metrics
+  const fetchHostMetrics = async () => {
+    setIsLoadingMetrics(true);
+    setMetricsError(null);
+    
+    try {
+      const response = await fetch('/api/system/metrics', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setHostMetrics({
+          ...data,
+          lastUpdated: new Date()
+        });
+      } else {
+        throw new Error(`HTTP ${response.status}: Failed to fetch system metrics`);
+      }
+    } catch (error) {
+      console.error('Error fetching host metrics:', error);
+      setMetricsError(error.message);
+      // Set dummy data for demo purposes when API is not available
+      setHostMetrics({
+        cpu: { 
+          usage: Math.random() * 80 + 10, 
+          cores: 8, 
+          loadAverage: [1.2, 1.5, 1.8] 
+        },
+        memory: { 
+          used: 12.4, 
+          total: 32.0, 
+          percentage: 38.8, 
+          available: 19.6 
+        },
+        disk: { 
+          used: 245.6, 
+          total: 500.0, 
+          percentage: 49.1, 
+          free: 254.4 
+        },
+        network: { 
+          bytesReceived: 1024 * 1024 * 150, 
+          bytesSent: 1024 * 1024 * 89,
+          packetsReceived: 15420,
+          packetsSent: 12330
+        },
+        uptime: 432156,
+        dockerVersion: '24.0.6',
+        lastUpdated: new Date()
+      });
+    } finally {
+      setIsLoadingMetrics(false);
+    }
+  };
+
+  // Auto-refresh metrics every 10 seconds when overview tab is active
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      fetchHostMetrics();
+      const interval = setInterval(fetchHostMetrics, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, token]);
 
   const getHealthColor = (status) => {
-    switch (status) {
-      case 'healthy': return 'text-green-500';
-      case 'unhealthy': return 'text-red-500';
-      case 'starting': return 'text-yellow-500';
-      default: return 'text-gray-500';
+    switch (status?.toLowerCase()) {
+      case 'running':
+      case 'healthy': 
+        return 'text-green-500';
+      case 'unhealthy': 
+      case 'exited':
+        return 'text-red-500';
+      case 'starting': 
+      case 'restarting':
+        return 'text-yellow-500';
+      case 'paused':
+        return 'text-blue-500';
+      default: 
+        return 'text-gray-500';
     }
+  };
+
+  const getUsageColor = (percentage) => {
+    if (percentage >= 90) return 'bg-red-500';
+    if (percentage >= 75) return 'bg-yellow-500';
+    if (percentage >= 50) return 'bg-blue-500';
+    return 'bg-green-500';
+  };
+
+  const formatBytes = (bytes) => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatUptime = (seconds) => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${days}d ${hours}h ${minutes}m`;
   };
 
   const handleViewLogs = async (container) => {
@@ -30,7 +159,7 @@ const ContainerMonitor = ({ containers = [], images = [], volumes = [], onViewLo
           logs: Array.isArray(logs) ? logs : logs.split('\n').filter(line => line.trim())
         });
       } else {
-        // Fallback für Demo-Zwecke
+        // Fallback for demo purposes
         setTimeout(() => {
           setCurrentLogs({
             containerName: container.name,
@@ -62,11 +191,23 @@ const ContainerMonitor = ({ containers = [], images = [], volumes = [], onViewLo
   const formatSize = (size) => {
     if (typeof size === 'string') return size;
     if (!size) return '-';
-    if (size > 1024 * 1024 * 1024) return (size / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
-    if (size > 1024 * 1024) return (size / (1024 * 1024)).toFixed(2) + ' MB';
-    if (size > 1024) return (size / 1024).toFixed(2) + ' KB';
-    return size + ' B';
+    return formatBytes(size);
   };
+
+  const getContainerStatusSummary = () => {
+    const summary = containers.reduce((acc, container) => {
+      const status = container.status?.toLowerCase() || 'unknown';
+      if (status.includes('running')) acc.running++;
+      else if (status.includes('exited')) acc.stopped++;
+      else if (status.includes('paused')) acc.paused++;
+      else acc.unknown++;
+      return acc;
+    }, { running: 0, stopped: 0, paused: 0, unknown: 0 });
+    
+    return summary;
+  };
+
+  const containerSummary = getContainerStatusSummary();
 
   return (
     <>
@@ -122,16 +263,30 @@ const ContainerMonitor = ({ containers = [], images = [], volumes = [], onViewLo
       )}
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <FaDocker className="text-3xl text-blue-500" />
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-            Docker Container Monitor
-          </h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <FaDocker className="text-3xl text-blue-500" />
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+              Docker Container & Host Monitor
+            </h2>
+          </div>
+          
+          {activeTab === 'overview' && (
+            <button
+              onClick={fetchHostMetrics}
+              disabled={isLoadingMetrics}
+              className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
+            >
+              <FaRefresh className={isLoadingMetrics ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+          )}
         </div>
         
         {/* Tabs */}
         <div className="flex gap-1 mb-6 border-b dark:border-gray-700">
           {[
+            { id: 'overview', label: 'System Overview', icon: FaServer },
             { id: 'containers', label: 'Containers', icon: FaCube, count: containers.length },
             { id: 'images', label: 'Images', icon: FaLayerGroup, count: images.length },
             { id: 'volumes', label: 'Volumes', icon: FaHdd, count: volumes.length },
@@ -147,54 +302,226 @@ const ContainerMonitor = ({ containers = [], images = [], volumes = [], onViewLo
             >
               <tab.icon className="text-sm" />
               <span>{tab.label}</span>
-              <span className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">
-                {tab.count}
-              </span>
+              {tab.count !== undefined && (
+                <span className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">
+                  {tab.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
         
+        {/* System Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* Host System Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* CPU Usage */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FaMicrochip className="text-blue-500" />
+                  <h3 className="font-medium text-gray-800 dark:text-gray-200">CPU Usage</h3>
+                </div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {hostMetrics.cpu.usage.toFixed(1)}%
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {hostMetrics.cpu.cores} cores
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mt-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-300 ${getUsageColor(hostMetrics.cpu.usage)}`}
+                    style={{ width: `${Math.min(hostMetrics.cpu.usage, 100)}%` }}
+                  ></div>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Load: {hostMetrics.cpu.loadAverage.map(l => l.toFixed(2)).join(', ')}
+                </div>
+              </div>
+
+              {/* Memory Usage */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FaMemory className="text-green-500" />
+                  <h3 className="font-medium text-gray-800 dark:text-gray-200">Memory</h3>
+                </div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {hostMetrics.memory.percentage.toFixed(1)}%
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {hostMetrics.memory.used.toFixed(1)} / {hostMetrics.memory.total.toFixed(1)} GB
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mt-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-300 ${getUsageColor(hostMetrics.memory.percentage)}`}
+                    style={{ width: `${Math.min(hostMetrics.memory.percentage, 100)}%` }}
+                  ></div>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Available: {hostMetrics.memory.available.toFixed(1)} GB
+                </div>
+              </div>
+
+              {/* Disk Usage */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FaHdd className="text-purple-500" />
+                  <h3 className="font-medium text-gray-800 dark:text-gray-200">Disk Space</h3>
+                </div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {hostMetrics.disk.percentage.toFixed(1)}%
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {hostMetrics.disk.used.toFixed(1)} / {hostMetrics.disk.total.toFixed(1)} GB
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mt-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-300 ${getUsageColor(hostMetrics.disk.percentage)}`}
+                    style={{ width: `${Math.min(hostMetrics.disk.percentage, 100)}%` }}
+                  ></div>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Free: {hostMetrics.disk.free.toFixed(1)} GB
+                </div>
+              </div>
+
+              {/* Network Stats */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FaNetworkWired className="text-orange-500" />
+                  <h3 className="font-medium text-gray-800 dark:text-gray-200">Network</h3>
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                  <div>↓ {formatBytes(hostMetrics.network.bytesReceived)}</div>
+                  <div>↑ {formatBytes(hostMetrics.network.bytesSent)}</div>
+                  <div className="text-xs">
+                    Packets: {hostMetrics.network.packetsReceived.toLocaleString()} / {hostMetrics.network.packetsSent.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* System Info & Container Summary */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* System Information */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+                  <FaServer className="text-gray-500" />
+                  System Information
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Uptime:</span>
+                    <span className="text-gray-900 dark:text-white">{formatUptime(hostMetrics.uptime)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Docker Version:</span>
+                    <span className="text-gray-900 dark:text-white">{hostMetrics.dockerVersion || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Last Updated:</span>
+                    <span className="text-gray-900 dark:text-white">
+                      {hostMetrics.lastUpdated ? hostMetrics.lastUpdated.toLocaleTimeString() : 'N/A'}
+                    </span>
+                  </div>
+                  {metricsError && (
+                    <div className="text-red-500 text-xs mt-2">
+                      Error: {metricsError} (showing demo data)
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Container Summary */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+                  <FaCube className="text-blue-500" />
+                  Container Summary
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Running:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{containerSummary.running}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Stopped:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{containerSummary.stopped}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Paused:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{containerSummary.paused}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Other:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{containerSummary.unknown}</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t dark:border-gray-600">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Total Images:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{images.length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-gray-600 dark:text-gray-400">Total Volumes:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{volumes.length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Container Tab */}
         {activeTab === 'containers' && (
           <div className="space-y-3">
-            {containers.map(container => (
-              <div key={container.id} className="border dark:border-gray-700 rounded-lg p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <FaCube className="text-blue-500" />
-                      <h3 className="font-medium text-gray-800 dark:text-gray-200">
-                        {container.name}
-                      </h3>
-                      <span className={`text-sm ${getHealthColor(container.status)}`}>
-                        ● {container.status}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      <span>Image: {container.image && container.image.join(', ')}</span>
-                      <span className="mx-2">•</span>
-                      <span>Status: {container.status}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleViewLogs(container)}
-                      className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
-                    >
-                      View Logs
-                    </button>
-                    <div className="text-right text-sm">
-                      <div className="text-gray-600 dark:text-gray-400">
-                        ID: {container.id.slice(0, 12)}
+            {containers.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                No containers found
+              </div>
+            ) : (
+              containers.map(container => (
+                <div key={container.id} className="border dark:border-gray-700 rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <FaCube className="text-blue-500" />
+                        <h3 className="font-medium text-gray-800 dark:text-gray-200">
+                          {container.name}
+                        </h3>
+                        <span className={`text-sm ${getHealthColor(container.status)}`}>
+                          ● {container.status}
+                        </span>
                       </div>
-                      <div className="text-gray-600 dark:text-gray-400">
-                        Created: {container.created}
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        <span>Image: {container.image && Array.isArray(container.image) ? container.image.join(', ') : container.image}</span>
+                        <span className="mx-2">•</span>
+                        <span>Status: {container.status}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleViewLogs(container)}
+                        className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                      >
+                        View Logs
+                      </button>
+                      <div className="text-right text-sm">
+                        <div className="text-gray-600 dark:text-gray-400">
+                          ID: {container.id?.slice(0, 12) || 'N/A'}
+                        </div>
+                        <div className="text-gray-600 dark:text-gray-400">
+                          Created: {container.created || 'N/A'}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
         
@@ -211,14 +538,24 @@ const ContainerMonitor = ({ containers = [], images = [], volumes = [], onViewLo
                 </tr>
               </thead>
               <tbody>
-                {images.map(image => (
-                  <tr key={image.id} className="border-b dark:border-gray-700">
-                    <td className="p-2 text-gray-800 dark:text-gray-200">{image.id.slice(0, 12)}</td>
-                    <td className="p-2 text-gray-600 dark:text-gray-400">{image.tags && image.tags.join(', ')}</td>
-                    <td className="p-2 text-gray-600 dark:text-gray-400">{formatSize(image.size)}</td>
-                    <td className="p-2 text-gray-600 dark:text-gray-400">{image.created}</td>
+                {images.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      No images found
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  images.map(image => (
+                    <tr key={image.id} className="border-b dark:border-gray-700">
+                      <td className="p-2 text-gray-800 dark:text-gray-200">{image.id?.slice(0, 12) || 'N/A'}</td>
+                      <td className="p-2 text-gray-600 dark:text-gray-400">
+                        {image.tags && Array.isArray(image.tags) ? image.tags.join(', ') : image.tags || 'N/A'}
+                      </td>
+                      <td className="p-2 text-gray-600 dark:text-gray-400">{formatSize(image.size)}</td>
+                      <td className="p-2 text-gray-600 dark:text-gray-400">{image.created || 'N/A'}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -227,24 +564,30 @@ const ContainerMonitor = ({ containers = [], images = [], volumes = [], onViewLo
         {/* Volumes Tab */}
         {activeTab === 'volumes' && (
           <div className="space-y-3">
-            {volumes.map((volume, index) => (
-              <div key={index} className="border dark:border-gray-700 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <FaHdd className="text-purple-500" />
-                      <h3 className="font-medium text-gray-800 dark:text-gray-200">{volume.name}</h3>
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      Mountpoint: {volume.mountpoint || volume.mountPoint || '-'}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                      Created: {volume.created}
+            {volumes.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                No volumes found
+              </div>
+            ) : (
+              volumes.map((volume, index) => (
+                <div key={volume.name || index} className="border dark:border-gray-700 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <FaHdd className="text-purple-500" />
+                        <h3 className="font-medium text-gray-800 dark:text-gray-200">{volume.name || 'Unnamed Volume'}</h3>
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        Mountpoint: {volume.mountpoint || volume.mountPoint || volume.driver || '-'}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        Created: {volume.created || 'N/A'}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
       </div>

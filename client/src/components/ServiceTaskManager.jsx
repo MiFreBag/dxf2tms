@@ -367,7 +367,7 @@ const ServiceTaskManager = ({ token }) => {
   const [showArtifacts, setShowArtifacts] = useState(false);
 
   // Funktion zum Generieren von Mock-Jobs (kann entfernt werden, wenn nur Backend genutzt wird)
-  const generateMockJobs = () => {
+  const generateMockJobs = useCallback(() => {
     const jobTypes = ['upload', 'convert', 'tms'];
     const statuses = ['running', 'completed', 'failed', 'queued', 'cancelled'];
     const mockJobs = [];
@@ -412,7 +412,7 @@ const ServiceTaskManager = ({ token }) => {
       mockJobs.push(job);
     }
     return mockJobs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  } // <-- Korrektes Funktionsende, useCallback entfernen
+  }, []); // useCallback sorgt für stabile Referenz
   // Ende Mock-Daten
 
   // Fetch jobs from API
