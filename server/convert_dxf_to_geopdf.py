@@ -301,19 +301,11 @@ class DXFToGeoPDFConverter:
 def dxf_to_geopdf(dxf_path: str, pdf_path: str,
                  crs_epsg: Optional[int] = None,
                  page_size: str = "A4",
-                 dpi: int = 300) -> None:
+                 dpi: int = 300,
+                 return_metadata: bool = False) -> dict | None:
     """
     Hauptfunktion: DXF zu GeoPDF konvertieren (immer A4 quer, GeoPDF)
-    
-    Args:
-        dxf_path: Pfad zur DXF-Eingabedatei
-        pdf_path: Pfad zur PDF-Ausgabedatei  
-        crs_epsg: EPSG-Code für Koordinatensystem (optional)
-        page_size: Seitengröße (A4, A3)
-        dpi: Auflösung für PDF-Export
-        
-    Raises:
-        Exception: Bei Fehlern während der Konvertierung
+    Gibt optional Bounding Box und SRS zurück.
     """
     if not QGIS_AVAILABLE:
         raise ModuleNotFoundError(
@@ -338,6 +330,28 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
             # GeoPDF-Export erzwingen
             converter.export_to_pdf(layout, pdf_path, dpi=dpi, georeference=True)
         logger.info("DXF to GeoPDF conversion completed successfully (A4 quer, GeoPDF)")
+        if return_metadata:
+            # Metadaten aus PDF extrahieren
+            from osgeo import gdal
+            ds = gdal.Open(pdf_path)
+            if ds is not None:
+                gt = ds.GetGeoTransform()
+                xsize = ds.RasterXSize
+                ysize = ds.RasterYSize
+                minx = gt[0]
+                maxy = gt[3]
+                maxx = minx + gt[1] * xsize
+                miny = maxy + gt[5] * ysize
+                srs = ds.GetProjectionRef()
+                ds = None
+                return {
+                    "bbox": [minx, miny, maxx, maxy],
+                    "srs": srs
+                }
+            else:
+                logger.warning("GeoPDF konnte nicht für Metadaten geöffnet werden.")
+                return None
+        return None
     except Exception as e:
         logger.error(f"DXF to GeoPDF conversion failed: {e}")
         raise Exception(f"Conversion failed: {str(e)}")

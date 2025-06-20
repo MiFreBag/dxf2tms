@@ -121,6 +121,10 @@ with conn:
         cursor.execute("ALTER TABLE files ADD COLUMN layer_info TEXT")
     except sqlite3.OperationalError:
         pass
+    try:
+        cursor.execute("ALTER TABLE files ADD COLUMN srs TEXT")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
 
 # Verzeichnisse erstellen
@@ -400,7 +404,8 @@ async def list_files(
                 "status": row[7] if len(row) > 7 else 'uploaded',
                 "error_message": row[8] if len(row) > 8 else None,
                 "bbox": row[9] if len(row) > 9 else None,
-                "layer_info": row[10] if len(row) > 10 else None
+                "layer_info": row[10] if len(row) > 10 else None,
+                "srs": row[11] if len(row) > 11 else None
             }
             for row in rows
         ]
@@ -429,7 +434,10 @@ async def get_file_details(file_id: str, user: str = Depends(verify_token)):
             "uploaded_at": row[5],
             "uploaded_by": row[6],
             "status": row[7] if len(row) > 7 else 'uploaded',
-            "error_message": row[8] if len(row) > 8 else None
+            "error_message": row[8] if len(row) > 8 else None,
+            "bbox": row[9] if len(row) > 9 else None,
+            "layer_info": row[10] if len(row) > 10 else None,
+            "srs": row[11] if len(row) > 11 else None
         }
 
         return file_details
@@ -458,18 +466,19 @@ async def convert_file(
         dxf_path = row[2]
         geopdf_path = os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
         try:
-            bbox, layer_info = None, None
+            bbox, layer_info, srs = None, None, None
             try:
                 result = dxf_to_geopdf(dxf_path, geopdf_path, page_size=page_size, dpi=dpi, return_metadata=True)
                 if isinstance(result, dict):
                     bbox = result.get('bbox')
                     layer_info = result.get('layer_info')
+                    srs = result.get('srs')
             except TypeError:
                 dxf_to_geopdf(dxf_path, geopdf_path, page_size=page_size, dpi=dpi)
             with conn:
                 cursor = conn.cursor()
-                cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ? WHERE id = ?", (True, geopdf_path, "converted", bbox, layer_info, file_id))
-            return {"message": "File converted successfully", "fileName": row[1], "page_size": page_size, "dpi": dpi}
+                cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ?, srs = ? WHERE id = ?", (True, geopdf_path, "converted", bbox, layer_info, srs, file_id))
+            return {"message": "File converted successfully", "fileName": row[1], "page_size": page_size, "dpi": dpi, "bbox": bbox, "srs": srs}
         except Exception as e:
             with conn:
                 cursor = conn.cursor()
