@@ -721,7 +721,10 @@ function TmsManager({ token, showToast }) {
   }, [token])
 
   const handleDeleteTms = async (tmsId, tmsName) => {
-    if (!confirm(`Möchten Sie den TMS-Layer "${tmsName || tmsId}" wirklich löschen?`)) return
+    // Bestätigungsabfrage vor dem Löschen
+    if (!window.confirm(`Möchten Sie den TMS-Layer "${tmsName || tmsId}" wirklich löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.`)) {
+      return; // Abbruch, wenn der Benutzer nicht bestätigt
+    }
     try {
       const response = await fetch(`${API}/tms/${tmsId}`, {
         method: 'DELETE',
