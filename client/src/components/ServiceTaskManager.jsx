@@ -411,9 +411,8 @@ const ServiceTaskManager = ({ token }) => {
 
       mockJobs.push(job);
     }
-
     return mockJobs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, []);
+  } // <-- Korrektes Funktionsende, useCallback entfernen
   // Ende Mock-Daten
 
   // Fetch jobs from API
