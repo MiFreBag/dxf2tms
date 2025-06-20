@@ -645,19 +645,18 @@ async def get_container_status(user: str = Depends(verify_token)):
     try:
         client = from_env()
         containers = []
-
         for container in client.containers.list():
             containers.append({
-                "id": container.id,
-                "name": container.name,
-                "status": container.status,
-                "image": container.image.tags,
-                "created": container.attrs['Created']
+                "id": str(container.id),
+                "name": str(container.name),
+                "status": str(container.status),
+                "image": [str(tag) for tag in (container.image.tags or [])],
+                "created": str(container.attrs.get('Created', ''))
             })
-
         return {"containers": containers}
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen des Container-Status: {e}")
+        import traceback
+        logger.error(f"Fehler beim Abrufen des Container-Status: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen des Container-Status")
 
 @app.get("/openapi.json", include_in_schema=False)
