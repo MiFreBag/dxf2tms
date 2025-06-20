@@ -6,6 +6,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+import shutil
 
 import jwt
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Query

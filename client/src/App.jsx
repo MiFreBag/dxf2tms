@@ -702,11 +702,29 @@ function App() {
                                         TMS erzeugen
                                       </button>
                                       <button
-                                        onClick={() => { setTmsPreviewFile(file); setShowTmsPreviewDialog(true); }}
-                                        className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md transition-colors"
+                                        onClick={async () => {
+                                          try {
+                                            const response = await fetch(`${API}/maptiler/${file.id}`, {
+                                              method: 'POST',
+                                              headers: {
+                                                'Authorization': `Bearer ${token}`,
+                                              },
+                                            });
+                                            if (response.ok) {
+                                              addMessage(`MapTiler-Job für ${file.name} gestartet`, 'success');
+                                            } else {
+                                              const err = await response.json();
+                                              addMessage(`MapTiler-Fehler: ${err.detail || 'Unbekannter Fehler'}`, 'error');
+                                            }
+                                          } catch (error) {
+                                            addMessage('Fehler beim Starten des MapTiler-Jobs', 'error');
+                                            console.error('MapTiler-Fehler:', error);
+                                          }
+                                        }}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-md transition-colors"
                                       >
-                                        <MapPin className="w-3 h-3" />
-                                        TMS Vorschau
+                                        <Layers className="w-3 h-3" />
+                                        MapTiler starten
                                       </button>
                                     </div>
                                   )}
@@ -912,7 +930,7 @@ function App() {
 
         {/* TMS-Preview-Dialog */}
         {showTmsPreviewDialog && tmsPreviewFile && (
-          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
+          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setTmsPreviewDialog(false)} />
         )}
         </main>
       </div>
