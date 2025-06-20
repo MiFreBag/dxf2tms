@@ -581,7 +581,10 @@ async def delete_file(file_id: str, user: str = Depends(verify_token)):
 
         for path in [dxf_path, pdf_path]:
             if os.path.exists(path):
-                os.remove(path)
+                try:
+                    os.remove(path)
+                except Exception as e:
+                    logger.warning(f"Fehler beim Löschen von {path}: {e}")
 
         # Aus Datenbank entfernen
         with conn:

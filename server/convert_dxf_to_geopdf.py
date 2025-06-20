@@ -175,73 +175,39 @@ class DXFToGeoPDFConverter:
                           page_size: str = "A4",
                           add_elements: bool = True) -> QgsPrintLayout:
         """
-        Print Layout erstellen
-        
-        Args:
-            layer: Der Hauptlayer für die Karte
-            layout_name: Name des Layouts
-            page_size: Seitengröße (A4, A3, etc.)
-            add_elements: Zusätzliche Kartenelemente hinzufügen
-            
-        Returns:
-            QgsPrintLayout: Erstelltes Layout
+        Print Layout immer als A4 quer (Landscape) erstellen
         """
         try:
             # Layout erstellen
             layout = QgsPrintLayout(self.project)
             layout.initializeDefaults()
             layout.setName(layout_name)
-            
-            # Layout zum Projekt hinzufügen
             self.project.layoutManager().addLayout(layout)
-            
+
             # Kartenelement erstellen
             map_item = QgsLayoutItemMap(layout)
-            
-            # Seitengröße bestimmen
-            page_sizes = {
-                "A0": (841, 1189),
-                "A1": (594, 841),
-                "A2": (420, 594),
-                "A3": (297, 420),
-                "A4": (210, 297),
-                "A5": (148, 210),
-            }
-            size = page_sizes.get(page_size.upper(), (210, 297))
-            page_width, page_height = size
-            # Dynamische Ränder je nach Größe
-            if page_size.upper() == "A0":
-                map_margins = 40
-            elif page_size.upper() == "A1":
-                map_margins = 30
-            elif page_size.upper() == "A2":
-                map_margins = 25
-            elif page_size.upper() == "A3":
-                map_margins = 15
-            else:
-                map_margins = 10
-            
+
+            # Immer A4 quer
+            page_width, page_height = 297, 210  # mm (A4 Landscape)
+            map_margins = 10
+
             # Kartenbereich definieren
             map_width = page_width - (2 * map_margins)
-            map_height = page_height - (2 * map_margins) - (20 if add_elements else 0)  # Platz für Titel
-            
+            map_height = page_height - (2 * map_margins) - (20 if add_elements else 0)
+
             # Karte positionieren und dimensionieren
             map_item.attemptMove(QgsLayoutPoint(map_margins, map_margins + (20 if add_elements else 0)))
             map_item.attemptResize(QgsLayoutSize(map_width, map_height, QgsUnitTypes.LayoutMillimeters))
-            
+
             # Layer-Extent auf Karte setzen
             map_item.setExtent(layer.extent())
-            
-            # Karte zum Layout hinzufügen
             layout.addLayoutItem(map_item)
-            
+
             if add_elements:
                 self._add_layout_elements(layout, map_item, layer, page_width)
-            
-            logger.info(f"Print layout created: {layout_name} ({page_size})")
-            
+
+            logger.info(f"Print layout created: {layout_name} (A4 quer)")
             return layout
-            
         except Exception as e:
             logger.error(f"Failed to create print layout: {e}")
             raise
@@ -337,7 +303,7 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
                  page_size: str = "A4",
                  dpi: int = 300) -> None:
     """
-    Hauptfunktion: DXF zu GeoPDF konvertieren
+    Hauptfunktion: DXF zu GeoPDF konvertieren (immer A4 quer, GeoPDF)
     
     Args:
         dxf_path: Pfad zur DXF-Eingabedatei
@@ -355,14 +321,8 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
         )
     try:
         logger.info(f"Starting DXF to GeoPDF conversion: {dxf_path} -> {pdf_path}")
-        
-        # Converter mit Context Manager verwenden
         with DXFToGeoPDFConverter() as converter:
-            
-            # DXF-Layer laden
             layer = converter.load_dxf_layer(dxf_path)
-            
-            # Koordinatensystem setzen falls angegeben
             if crs_epsg:
                 crs = QgsCoordinateReferenceSystem(f"EPSG:{crs_epsg}")
                 if crs.isValid():
@@ -370,20 +330,14 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
                     logger.info(f"Set CRS to EPSG:{crs_epsg}")
                 else:
                     logger.warning(f"Invalid EPSG code: {crs_epsg}")
-            
-            # Symbolisierung anwenden (alle Layer im Projekt)
             for layer_id, layer_obj in converter.project.mapLayers().items():
                 if isinstance(layer_obj, QgsVectorLayer):
                     converter.apply_symbolization(layer_obj)
-            
-            # Print Layout erstellen
-            layout = converter.create_print_layout(layer, page_size=page_size)
-            
-            # Als GeoPDF exportieren
-            converter.export_to_pdf(layout, pdf_path, dpi=dpi)
-        
-        logger.info("DXF to GeoPDF conversion completed successfully")
-        
+            # Immer A4 quer
+            layout = converter.create_print_layout(layer, page_size="A4")
+            # GeoPDF-Export erzwingen
+            converter.export_to_pdf(layout, pdf_path, dpi=dpi, georeference=True)
+        logger.info("DXF to GeoPDF conversion completed successfully (A4 quer, GeoPDF)")
     except Exception as e:
         logger.error(f"DXF to GeoPDF conversion failed: {e}")
         raise Exception(f"Conversion failed: {str(e)}")
