@@ -37,6 +37,7 @@ function App() {
   // Neue States für Konvertierungsparameter und Dialog
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [convertParams, setConvertParams] = useState({ file: null, pageSize: 'A4', dpi: 300 });
+  const [previewBlobs, setPreviewBlobs] = useState([]); // {fileId, fileName, url}
 
   // Fetch initial data
   const fetchFiles = useCallback(async () => {
@@ -230,9 +231,12 @@ function App() {
         }
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        // PDF-Vorschau in neuem Tab
-        window.open(url, '_blank');
-        addMessage('Vorschau geöffnet', 'success');
+        // Statt direkt öffnen: Im State speichern
+        setPreviewBlobs(prev => [
+          ...prev.filter(b => b.fileId !== file.id), // Duplikate vermeiden
+          { fileId: file.id, fileName: file.name, url }
+        ]);
+        addMessage('Vorschau erzeugt', 'success');
       } catch (error) {
         addMessage('Vorschau-Fehler: ' + error, 'error');
         console.error('Vorschau-Fehler:', error);
@@ -242,6 +246,16 @@ function App() {
       console.warn('Vorschau nicht verfügbar:', file);
     }
   }
+
+  const removePreviewBlob = (fileId) => {
+    setPreviewBlobs(prev => {
+      const toRemove = prev.find(b => b.fileId === fileId);
+      if (toRemove) {
+        window.URL.revokeObjectURL(toRemove.url);
+      }
+      return prev.filter(b => b.fileId !== fileId);
+    });
+  };
 
   const handleDownload = async (file) => {
     console.info('Download-Klick:', file);
@@ -626,6 +640,34 @@ function App() {
                   </>
                 )}
               </div>
+
+              {/* PDF-Vorschauen (Blobs) */}
+              {previewBlobs.length > 0 && (
+                <div className="bg-white rounded-lg shadow-sm border mt-6 p-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">PDF-Vorschauen (Blobs)</h3>
+                  <ul className="space-y-2">
+                    {previewBlobs.map(blob => (
+                      <li key={blob.fileId} className="flex items-center gap-3">
+                        <span className="flex-1 truncate">{blob.fileName}</span>
+                        <a
+                          href={blob.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+                        >
+                          Vorschau öffnen
+                        </a>
+                        <button
+                          onClick={() => removePreviewBlob(blob.fileId)}
+                          className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
+                        >
+                          Entfernen
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
           
