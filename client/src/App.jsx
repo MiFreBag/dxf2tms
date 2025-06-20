@@ -54,6 +54,9 @@ function App() {
   const [showTmsPreviewDialog, setShowTmsPreviewDialog] = useState(false);
   const [tmsPreviewFile, setTmsPreviewFile] = useState(null);
 
+  // State für laufende TMS-Erstellungen
+  const [tmsCreatingFiles, setTmsCreatingFiles] = useState(new Set());
+
   // addMessage muss VOR allen useCallback-Hooks stehen, die es als Abhängigkeit nutzen!
   const addMessage = useCallback((text, type = 'info') => {
     const id = Date.now();
@@ -72,6 +75,7 @@ function App() {
   // Handler für TMS-Erstellung
   const handleCreateTms = async (file, maxzoom = 20) => {
     setShowTmsDialog(false);
+    setTmsCreatingFiles(prev => new Set([...prev, file.id]));
     try {
       const response = await fetch(`${API}/tms/${file.id}?maxzoom=${maxzoom}`, {
         method: 'POST',
@@ -81,6 +85,7 @@ function App() {
       });
       if (response.ok) {
         addMessage(`TMS für ${file.name} erfolgreich erzeugt`, 'success');
+        await fetchFiles();
       } else {
         const err = await response.json();
         addMessage(`TMS-Fehler: ${err.detail || 'Unbekannter Fehler'}`, 'error');
@@ -88,15 +93,19 @@ function App() {
     } catch (error) {
       addMessage('Fehler bei der TMS-Erstellung', 'error');
       console.error('TMS-Fehler:', error);
+    } finally {
+      setTmsCreatingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(file.id);
+        return newSet;
+      });
     }
   };
 
   // Fetch initial data
-  const fetchFiles = useCallback(async (showAll = true) => {
+  const fetchFiles = useCallback(async () => {
     try {
       let url = `${API}/files`;
-      // Wenn showAll false ist, filtere nach aktuellem User (optional)
-      // if (!showAll && user) url += `?uploaded_by=${user}`;
       const response = await fetch(url, {
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -389,6 +398,9 @@ function App() {
     if (convertingFiles.has(file.id)) {
       return <Clock className="w-4 h-4 text-yellow-500 animate-pulse" />
     }
+    if (tmsCreatingFiles.has(file.id)) {
+      return <Layers className="w-4 h-4 text-yellow-500 animate-spin" title="TMS wird erzeugt..." />
+    }
     return file.converted ? 
       <CheckCircle className="w-4 h-4 text-green-500" /> : 
       <AlertCircle className="w-4 h-4 text-gray-400" />
@@ -396,6 +408,7 @@ function App() {
 
   const getStatusText = (file) => {
     if (convertingFiles.has(file.id)) return 'Konvertierung läuft...'
+    if (tmsCreatingFiles.has(file.id)) return 'TMS wird erzeugt...'
     return file.converted ? 'Bereit' : 'Warten'
   }
 
@@ -974,7 +987,7 @@ function App() {
 
         {/* TMS-Preview-Dialog */}
         {showTmsPreviewDialog && tmsPreviewFile && (
-          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setTmsPreviewDialog(false)} />
+          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
         )}
         </main>
       </div>
