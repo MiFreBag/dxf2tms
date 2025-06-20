@@ -38,6 +38,9 @@ RUN sed -e '/^qgis-python==/d' -e '/^GDAL==/d' requirements.txt > req_clean.txt 
  && pip install --upgrade pip --no-cache-dir \
  && pip install --no-cache-dir -r req_clean.txt
 
+# gdal2tiles explizit installieren (für TMS)
+RUN pip install gdal2tiles
+
 # App-Code kopieren und notwendige Ordner anlegen
 COPY . /app/
 RUN mkdir -p uploads output uploads/nodes/static
