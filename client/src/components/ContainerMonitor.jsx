@@ -33,8 +33,8 @@ const ContainerMonitor = ({ containers = [], images = [], volumes = [] }) => {
       </div>
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b dark:border-gray-700">
-        {{
-          id: 'containers', label: 'Containers', icon: FaCube, count: containers.length },
+        {[
+          { id: 'containers', label: 'Containers', icon: FaCube, count: containers.length },
           { id: 'images', label: 'Images', icon: FaLayerGroup, count: images.length },
           { id: 'volumes', label: 'Volumes', icon: FaHdd, count: volumes.length },
         ].map(tab => (
@@ -143,4 +143,3 @@ const ContainerMonitor = ({ containers = [], images = [], volumes = [] }) => {
 };
 
 export default ContainerMonitor;
-
