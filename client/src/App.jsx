@@ -43,6 +43,34 @@ function App() {
   const [showTmsDialog, setShowTmsDialog] = useState(false);
   const [tmsParams, setTmsParams] = useState({ file: null, maxzoom: 6 });
 
+  // Handler für TMS-Dialog öffnen
+  const handleOpenTmsDialog = (file) => {
+    setTmsParams({ file, maxzoom: 6 });
+    setShowTmsDialog(true);
+  };
+
+  // Handler für TMS-Erstellung
+  const handleCreateTms = async (file, maxzoom = 6) => {
+    setShowTmsDialog(false);
+    try {
+      const response = await fetch(`${API}/tms/${file.id}?maxzoom=${maxzoom}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        addMessage(`TMS für ${file.name} erfolgreich erzeugt`, 'success');
+      } else {
+        const err = await response.json();
+        addMessage(`TMS-Fehler: ${err.detail || 'Unbekannter Fehler'}`, 'error');
+      }
+    } catch (error) {
+      addMessage('Fehler bei der TMS-Erstellung', 'error');
+      console.error('TMS-Fehler:', error);
+    }
+  };
+
   // Fetch initial data
   const fetchFiles = useCallback(async () => {
     try {
