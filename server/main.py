@@ -23,7 +23,8 @@ import sqlite3
 # Import der DXF- und Raster-Konvertierungsfunktionen
 from convert_dxf_to_geopdf import dxf_to_geopdf, convert_pdf_to_tms
 from convert_raster_to_geopdf import raster_to_geopdf
-from controllers.jobController import get_all_jobs
+from controllers.jobController import get_all_jobs, jobs_db, thread_lock
+import threading
 
 # Logging konfigurieren
 logging.basicConfig(level=logging.INFO)
@@ -753,6 +754,78 @@ async def cleanup_files(days: int = 7, status: str = "error"):
 async def api_get_jobs():
     """Gibt alle Jobs für das Frontend zurück (ServiceTaskManager)"""
     return get_all_jobs()
+
+def run_maptiler_job(file_id, input_path, output_dir, job_id, params=None):
+    """Führt MapTiler Engine im Container für die angegebene Datei aus (asynchroner Task)."""
+    import subprocess
+    import datetime
+    job = jobs_db[job_id]
+    try:
+        job['status'] = 'running'
+        job['startedAt'] = datetime.datetime.now().isoformat()
+        # MapTiler Engine Docker-Aufruf
+        # Beispiel: docker run --rm -v ... maptiler/engine:latest --input ... --output ...
+        cmd = [
+            'docker', 'run', '--rm',
+            '-v', f"{os.path.abspath(output_dir)}/../:/data/input:ro",
+            '-v', f"{os.path.abspath(output_dir)}/../../maptiler-output:/data/output",
+            '-e', f"MT_KEY={os.environ.get('MT_KEY', 'replace-with-your-license')}",
+            'maptiler/engine:latest',
+            '--input', f"/data/input/{os.path.basename(input_path)}",
+            '--output', f"/data/output/{file_id}"
+        ]
+        if params and 'format' in params:
+            cmd += ['--format', params['format']]
+        # Optional: weitere Parameter
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            job['status'] = 'completed'
+            job['completedAt'] = datetime.datetime.now().isoformat()
+            job['artifacts'] = [{
+                'name': f'{file_id}',
+                'type': 'tiles',
+                'url': f'/maptiler-output/{file_id}',
+                'viewable': True
+            }]
+        else:
+            job['status'] = 'failed'
+            job['completedAt'] = datetime.datetime.now().isoformat()
+            job['error'] = result.stderr
+    except Exception as e:
+        job['status'] = 'failed'
+        job['completedAt'] = datetime.datetime.now().isoformat()
+        job['error'] = str(e)
+
+@app.post("/api/maptiler/{file_id}")
+async def start_maptiler_job(file_id: str, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
+    """Startet einen MapTiler-Job für eine konvertierte Datei (asynchron, als Service-Task)."""
+    cursor = db.cursor()
+    cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+    row = cursor.fetchone()
+    if not row or not row[2] or not row[4]:
+        raise HTTPException(status_code=404, detail="GeoPDF nicht gefunden oder nicht konvertiert")
+    input_path = row[2] if row[2].endswith('.pdf') else os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
+    if not os.path.exists(input_path):
+        raise HTTPException(status_code=404, detail="GeoPDF file missing on disk")
+    output_dir = os.path.abspath(os.path.join('..', 'maptiler-output'))
+    job_id = str(uuid.uuid4())
+    job = {
+        'id': job_id,
+        'name': f"MapTiler für {row[1]}",
+        'type': 'maptiler',
+        'status': 'queued',
+        'createdAt': datetime.datetime.now().isoformat(),
+        'inputFile': {'name': row[1], 'size': row[3]},
+        'parameters': {},
+        'artifacts': [],
+        'error': None,
+        'progress': None
+    }
+    with thread_lock:
+        jobs_db[job_id] = job
+        thread = threading.Thread(target=run_maptiler_job, args=(file_id, input_path, output_dir, job_id))
+        thread.start()
+    return {'job_id': job_id, 'status': 'queued'}
 
 if __name__ == "__main__":
     import uvicorn
