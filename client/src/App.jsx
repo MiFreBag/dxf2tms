@@ -43,6 +43,15 @@ function App() {
   const [showTmsDialog, setShowTmsDialog] = useState(false);
   const [tmsParams, setTmsParams] = useState({ file: null, maxzoom: 6 });
 
+  // addMessage muss VOR allen useCallback-Hooks stehen, die es als Abhängigkeit nutzen!
+  const addMessage = useCallback((text, type = 'info') => {
+    const id = Date.now();
+    setMessages(prev => [...prev, { id, text, type }]);
+    setTimeout(() => {
+      setMessages(prev => prev.filter(msg => msg.id !== id));
+    }, 5000);
+  }, []);
+
   // Handler für TMS-Dialog öffnen
   const handleOpenTmsDialog = (file) => {
     setTmsParams({ file, maxzoom: 6 });
@@ -133,14 +142,6 @@ function App() {
     setToken(null);
     setPage('login');
 };
-
-  const addMessage = useCallback((text, type = 'info') => {
-    const id = Date.now();
-    setMessages(prev => [...prev, { id, text, type }]);
-    setTimeout(() => {
-      setMessages(prev => prev.filter(msg => msg.id !== id));
-    }, 5000);
-  }, []);
 
   const handleUpload = async (event) => {
     try {
