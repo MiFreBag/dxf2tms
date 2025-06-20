@@ -1,38 +1,30 @@
 // ServiceTaskManager.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   FaServer,
   FaMicrochip,
   FaMemory,
   FaNetworkWired,
-  FaPlay,
-  FaStop,
-  FaRedo,
-  FaExclamationTriangle,
-  FaCheckCircle,
-  FaTimesCircle,
   FaClock,
-  FaChartLine,
-  FaTerminal,
-  FaCog,
-  FaDatabase,
-  FaShieldAlt,
-  FaGlobe,
-  FaVideo,
-  FaRobot,
-  FaTrafficLight
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaTimesCircle,
+  FaStop,
+  FaPlay,
+  FaRedo,
+  FaCog
 } from 'react-icons/fa';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Service Icons Map
+// Service Icons Mapping
 const serviceIcons = {
-  'api-gateway': FaGlobe,
-  'database': FaDatabase,
-  'auth-service': FaShieldAlt,
-  'video-service': FaVideo,
-  'ai-service': FaRobot,
-  'traffic-control': FaTrafficLight,
-  'monitoring': FaChartLine,
+  'api': FaServer,
+  'database': FaServer,
+  'auth': FaServer,
+  'video': FaServer,
+  'ai': FaServer,
+  'traffic': FaServer,
+  'monitoring': FaServer,
   'backup': FaServer,
   'default': FaCog
 };
@@ -182,10 +174,11 @@ const formatUptime = (seconds) => {
 };
 
 const formatBytes = (bytes) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
 
 const formatMemory = (mb) => {
@@ -193,20 +186,30 @@ const formatMemory = (mb) => {
   return `${(mb / 1024).toFixed(1)} GB`;
 };
 
+const interpretDockerStatus = (statusString) => {
+  if (!statusString) return { text: 'Unknown', color: 'text-gray-500', icon: FaExclamationTriangle };
+  const lowerStatus = statusString.toLowerCase();
+
+  if (lowerStatus.includes('up') || lowerStatus.includes('running')) {
+    return { text: 'Running', color: 'text-green-500', icon: FaCheckCircle };
+  } else if (lowerStatus.includes('exited') || lowerStatus.includes('stopped')) {
+    return { text: 'Exited', color: 'text-gray-500', icon: FaStop };
+  } else if (lowerStatus.includes('restarting')) {
+    return { text: 'Restarting', color: 'text-yellow-500', icon: FaRedo };
+  } else if (lowerStatus.includes('paused')) {
+    return { text: 'Paused', color: 'text-blue-500', icon: FaPlay };
+  } else if (lowerStatus.includes('created')) {
+    return { text: 'Created', color: 'text-blue-500', icon: FaPlay };
+  }
+  return { text: statusString, color: 'text-yellow-500', icon: FaExclamationTriangle };
+};
+
 // Service Card Component
-const ServiceCard = ({ service, onAction, expanded, onToggleExpand }) => {
-  const Icon = serviceIcons[service.id] || serviceIcons.default;
-  
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'running': return 'text-green-500';
-      case 'warning': return 'text-yellow-500';
-      case 'error': return 'text-red-500';
-      case 'stopped': return 'text-gray-500';
-      default: return 'text-gray-500';
-    }
-  };
-  
+const ServiceCard = ({ service }) => {
+  const serviceType = service.name ? service.name.toLowerCase().split(' ')[0] : 'default';
+  const Icon = serviceIcons[serviceType] || serviceIcons.default;
+  const interpretedStatus = interpretDockerStatus(service.status);
+
   const getStatusBgColor = (status) => {
     switch (status) {
       case 'running': return 'bg-green-50 dark:bg-green-900/20';
@@ -216,40 +219,25 @@ const ServiceCard = ({ service, onAction, expanded, onToggleExpand }) => {
       default: return 'bg-gray-50 dark:bg-gray-900/20';
     }
   };
-  
-  const StatusIcon = {
-    running: FaCheckCircle,
-    warning: FaExclamationTriangle,
-    error: FaTimesCircle,
-    stopped: FaStop
-  }[service.status] || FaExclamationTriangle;
-  
+
+  const StatusIcon = interpretedStatus.icon;
+
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 ${
-      expanded ? 'col-span-2 row-span-2' : ''
-    }`}>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Header */}
-      <div className={`p-4 border-b dark:border-gray-700 ${getStatusBgColor(service.status)}`}>
+      <div className={`p-4 border-b dark:border-gray-700 ${getStatusBgColor(interpretedStatus.text.toLowerCase())}`}>
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
-            <Icon className={`text-2xl ${getStatusColor(service.status)}`} />
+            <Icon className={`text-2xl ${interpretedStatus.color}`} />
             <div>
               <h3 className="font-semibold text-gray-800 dark:text-gray-200">{service.name}</h3>
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <StatusIcon className={`${getStatusColor(service.status)}`} />
-                <span className="capitalize">{service.status}</span>
-                {service.pid && <span>• PID: {service.pid}</span>}
-                <span>• Port: {service.port}</span>
-                <span>• v{service.version}</span>
+                <StatusIcon className={`${interpretedStatus.color}`} />
+                <span className="capitalize">{interpretedStatus.text}</span>
+                {service.id && <span className="truncate"> • ID: {service.id.substring(0,12)}</span>}
               </div>
             </div>
           </div>
-          <button
-            onClick={() => onToggleExpand(service.id)}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            {expanded ? '⊟' : '⊞'}
-          </button>
         </div>
       </div>
       
@@ -261,58 +249,79 @@ const ServiceCard = ({ service, onAction, expanded, onToggleExpand }) => {
             <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
               <FaMicrochip /> CPU
             </span>
-            <span className="font-medium">{service.cpu}%</span>
+            <span className="font-medium">{service.cpu || 0}%</span>
           </div>
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
             <div 
               className={`h-2 rounded-full transition-all duration-500 ${
-                service.cpu > 80 ? 'bg-red-500' : 
-                service.cpu > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                (service.cpu || 0) > 80 ? 'bg-red-500' : 
+                (service.cpu || 0) > 60 ? 'bg-yellow-500' : 'bg-green-500'
               }`}
-              style={{ width: `${service.cpu}%` }}
+              style={{ width: `${service.cpu || 0}%` }}
             />
           </div>
+        </div>
+        
+        {/* Additional Info */}
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            <strong>Image:</strong> {service.image && service.image.length > 0 ? service.image.join(', ') : 'N/A'}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            <strong>Raw Status:</strong> {service.status}
+          </p>
+          {service.created && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              <strong>Created:</strong> {new Date(service.created).toLocaleString()}
+            </p>
+          )}
         </div>
         
         {/* Memory Usage */}
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-              <FaMemory /> Memory
-            </span>
-            <span className="font-medium">
-              {formatMemory(service.memory)} / {formatMemory(service.memoryMax)}
-            </span>
+        {service.memory && service.memoryMax && (
+          <div>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                <FaMemory /> Memory
+              </span>
+              <span className="font-medium">
+                {formatMemory(service.memory)} / {formatMemory(service.memoryMax)}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div 
+                className={`h-2 rounded-full transition-all duration-500 ${
+                  (service.memory / service.memoryMax) * 100 > 80 ? 'bg-red-500' : 
+                  (service.memory / service.memoryMax) * 100 > 60 ? 'bg-yellow-500' : 'bg-blue-500'
+                }`}
+                style={{ width: `${(service.memory / service.memoryMax) * 100}%` }}
+              />
+            </div>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-            <div 
-              className={`h-2 rounded-full transition-all duration-500 ${
-                (service.memory / service.memoryMax) * 100 > 80 ? 'bg-red-500' : 
-                (service.memory / service.memoryMax) * 100 > 60 ? 'bg-yellow-500' : 'bg-blue-500'
-              }`}
-              style={{ width: `${(service.memory / service.memoryMax) * 100}%` }}
-            />
-          </div>
-        </div>
+        )}
         
         {/* Network */}
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-            <FaNetworkWired className="text-green-500" />
-            <span>↓ {formatBytes((service.network?.in || 0) * 1024)}/s</span>
+        {service.network && (
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+              <FaNetworkWired className="text-green-500" />
+              <span>↓ {formatBytes((service.network?.in || 0) * 1024)}/s</span>
+            </div>
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+              <FaNetworkWired className="text-blue-500" />
+              <span>↑ {formatBytes((service.network?.out || 0) * 1024)}/s</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-            <FaNetworkWired className="text-blue-500" />
-            <span>↑ {formatBytes((service.network?.out || 0) * 1024)}/s</span>
-          </div>
-        </div>
+        )}
         
         {/* Stats */}
         <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <div className="flex items-center gap-1">
-            <FaClock />
-            <span>Uptime: {formatUptime(service.uptime)}</span>
-          </div>
+          {service.uptime !== undefined && (
+            <div className="flex items-center gap-1">
+              <FaClock />
+              <span>Uptime: {formatUptime(service.uptime)}</span>
+            </div>
+          )}
           {service.requests > 0 && (
             <div>Requests: {service.requests.toLocaleString()}</div>
           )}
@@ -323,86 +332,83 @@ const ServiceCard = ({ service, onAction, expanded, onToggleExpand }) => {
             <div className="text-red-500">Errors: {service.errors}</div>
           )}
         </div>
-        
-        {/* Expanded view mit History Chart */}
-        {expanded && (
-          <div className="mt-4 pt-4 border-t dark:border-gray-700">
-            <h4 className="text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-              Resource History (Last Hour)
-            </h4>
-            <div className="h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={generateMockHistory()}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="time" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1F2937', 
-                      border: '1px solid #374151',
-                      borderRadius: '6px'
-                    }}
-                  />
-                  <Area 
-                    type="monotone"
-                    dataKey="cpu"
-                    stroke="#4F46E5"
-                    fill="url(#cpuGradient)"
-                    dot={false}
-                  />
-                  <Area 
-                    type="monotone"
-                    dataKey="memory"
-                    stroke="#10B981"
-                    fill="url(#memoryGradient)"
-                    dot={false}
-                  />
-                  <defs>
-                    <linearGradient id="cpuGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" style={{ stopColor: '#4F46E5', stopOpacity: 0.8 }} />
-                      <stop offset="100%" style={{ stopColor: '#4F46E5', stopOpacity: 0 }} />
-                    </linearGradient>
-                    <linearGradient id="memoryGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" style={{ stopColor: '#10B981', stopOpacity: 0.8 }} />
-                      <stop offset="100%" style={{ stopColor: '#10B981', stopOpacity: 0 }} />
-                    </linearGradient>
-                  </defs>
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
+
+        {/* Action Buttons */}
+        <div className="mt-4 flex gap-2">
+          <button className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed" disabled={interpretedStatus.text !== 'Exited'}>
+            Start
+          </button>
+          <button className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed" disabled={interpretedStatus.text !== 'Running'}>
+            Stop
+          </button>
+          <button className="px-3 py-1 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed" disabled={interpretedStatus.text !== 'Running'}>
+            Restart
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
-const generateMockHistory = () => {
-  return [
-    { time: '10:00', cpu: 20, memory: 30 },
-    { time: '10:05', cpu: 25, memory: 35 },
-    { time: '10:10', cpu: 30, memory: 40 },
-  ];
-};
-
 const ServiceTaskManager = ({ services = [] }) => {
-  const [expandedService, setExpandedService] = useState(null);
+  const [processedServices, setProcessedServices] = useState([]);
+
+  useEffect(() => {
+    if (Array.isArray(services)) {
+      const newProcessedServices = services.map(service => ({
+        ...service,
+        interpretedStatus: interpretDockerStatus(service.status)
+      }));
+      setProcessedServices(newProcessedServices);
+    } else {
+      setProcessedServices([]);
+    }
+  }, [services]);
+
+  const activeServices = processedServices.filter(s => s.interpretedStatus.text === 'Running' || s.interpretedStatus.text === 'Restarting' || s.interpretedStatus.text === 'Paused' || s.interpretedStatus.text === 'Created');
+  const completedServices = processedServices.filter(s => s.interpretedStatus.text === 'Exited');
+  const otherServices = processedServices.filter(s => !['Running', 'Restarting', 'Paused', 'Created', 'Exited'].includes(s.interpretedStatus.text));
 
   return (
-    <div>
-      {services.length === 0 ? (
-        <div className="text-gray-500 p-4">Keine Service-Daten vom Backend geladen.</div>
+    <div className="p-4">
+      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Service Task Manager</h2>
+      {processedServices.length === 0 ? (
+        <div className="text-gray-500 dark:text-gray-400 p-4 text-center">Keine Service-Daten vom Backend geladen oder keine Services vorhanden.</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {services.map((service) => (
-            <ServiceCard
-              key={service.id}
-              service={service}
-              expanded={expandedService === service.id}
-              onToggleExpand={(id) => setExpandedService(expandedService === id ? null : id)}
-            />
-          ))}
-        </div>
+        <>
+          {activeServices.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Aktive Services ({activeServices.length})</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activeServices.map((service) => (
+                  <ServiceCard key={service.id} service={service} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {completedServices.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Abgeschlossene Tasks / Beendete Services ({completedServices.length})</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {completedServices.map((service) => (
+                  <ServiceCard key={service.id} service={service} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {otherServices.length > 0 && (
+             <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">Andere Status ({otherServices.length})</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {otherServices.map((service) => (
+                  <ServiceCard key={service.id} service={service} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
