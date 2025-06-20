@@ -740,7 +740,8 @@ async def get_container_status(user: str = Depends(verify_token)):
         return {"containers": containers, "images": images, "volumes": volumes}
     except Exception as e:
         import traceback
-        logger.error(f"Fehler beim Abrufen des Container-Status: {e}\n{traceback.format_exc()}")
+        # Log the full traceback for better debugging
+        logger.error(f"Error fetching container status: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen des Container-Status")
 
 @app.get("/api/containers/{container_id}/logs", response_class=PlainTextResponse)
@@ -751,7 +752,9 @@ async def get_container_logs(container_id: str, user: str = Depends(verify_token
         container = client.containers.get(container_id)
         logs = container.logs(tail=200, stdout=True, stderr=True)
         return logs.decode("utf-8", errors="replace")
-    except Exception as e:
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=404, detail=f"Container {container_id} not found")
+    except docker.errors.APIError as e:
         logger.error(f"Fehler beim Abrufen der Logs für Container {container_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Fehler beim Abrufen der Logs: {e}")
 
@@ -1013,7 +1016,8 @@ async def container_stats(container_id: str, user: str = Depends(verify_token)):
         return {
             "container_id": container_id,
             "name": container.name,
-            "cpu_percent": round(cpu_percent, 2),
+            # Ensure cpu_percent is not NaN or Inf
+            "cpu_percent": round(cpu_percent, 2) if math.isfinite(cpu_percent) else 0.0,
             "memory": {
                 "usage": memory_usage,
                 "limit": memory_limit,
@@ -1024,6 +1028,8 @@ async def container_stats(container_id: str, user: str = Depends(verify_token)):
             "timestamp": datetime.now().isoformat()
         }
         
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=404, detail=f"Container {container_id} not found")
     except docker.errors.NotFound:
         raise HTTPException(status_code=404, detail="Container not found")
     except Exception as e:
@@ -1059,7 +1065,8 @@ async def container_logs(
         return {
             "container_id": container_id,
             "name": container.name,
-            "logs": log_lines,
+            # Return logs as a list of strings
+            "logs": log_lines, 
             "lines_returned": len(log_lines),
             "timestamp": datetime.now().isoformat()
         }
@@ -1120,6 +1127,7 @@ async def system_health():
         return health_status
         
     except Exception as e:
+        logger.error(f"Error during system health check: {e}")
         return {
             "status": "error",
             "error": str(e),

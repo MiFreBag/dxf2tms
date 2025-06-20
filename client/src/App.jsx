@@ -440,6 +440,7 @@ function App() {
     { id: 'n8n', label: 'n8n Workflow', icon: Layers },
     { id: 'service-task-manager', label: 'Service Task Manager', icon: Layers },
     { id: 'container-monitor', label: 'Container Monitor', icon: Layers },
+    { id: 'filebrowser', label: 'Datei-Browser', icon: Folder }, // Added File Browser to navItems
     { id: 'api-docs', label: 'API Docs', icon: BookOpen },
   ]
 
