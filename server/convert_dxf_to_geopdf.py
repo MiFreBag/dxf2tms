@@ -313,6 +313,7 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
         )
     try:
         logger.info(f"Starting DXF to GeoPDF conversion: {dxf_path} -> {pdf_path}")
+        metadata = None
         with DXFToGeoPDFConverter() as converter:
             layer = converter.load_dxf_layer(dxf_path)
             if crs_epsg:
@@ -329,35 +330,38 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
             layout = converter.create_print_layout(layer, page_size="A4")
             # GeoPDF-Export erzwingen
             converter.export_to_pdf(layout, pdf_path, dpi=dpi, georeference=True)
-        logger.info("DXF to GeoPDF conversion completed successfully (A4 quer, GeoPDF)")
+            logger.info("DXF to GeoPDF conversion completed successfully (A4 quer, GeoPDF)")
+            if return_metadata:
+                # Metadaten aus PDF extrahieren, Fallback auf QGIS-Layer falls PDF nicht lesbar
+                try:
+                    from osgeo import gdal
+                    ds = gdal.Open(pdf_path)
+                    if ds is not None:
+                        gt = ds.GetGeoTransform()
+                        xsize = ds.RasterXSize
+                        ysize = ds.RasterYSize
+                        minx = gt[0]
+                        maxy = gt[3]
+                        maxx = minx + gt[1] * xsize
+                        miny = maxy + gt[5] * ysize
+                        srs = ds.GetProjectionRef()
+                        ds = None
+                        metadata = {
+                            "bbox": [minx, miny, maxx, maxy],
+                            "srs": srs
+                        }
+                    else:
+                        logger.warning("GeoPDF konnte nicht für Metadaten geöffnet werden. Fallback auf QGIS-Layer.")
+                except Exception as e:
+                    logger.warning(f"GDAL-Fehler beim Öffnen des PDFs: {e}. Fallback auf QGIS-Layer.")
+                if metadata is None:
+                    # Fallback: Bounding Box und CRS direkt aus QGIS-Layer
+                    extent = layer.extent()
+                    bbox = [extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum()]
+                    srs = layer.crs().authid() if layer.crs() else None
+                    metadata = {"bbox": bbox, "srs": srs}
         if return_metadata:
-            # Metadaten aus PDF extrahieren, Fallback auf QGIS-Layer falls PDF nicht lesbar
-            try:
-                from osgeo import gdal
-                ds = gdal.Open(pdf_path)
-                if ds is not None:
-                    gt = ds.GetGeoTransform()
-                    xsize = ds.RasterXSize
-                    ysize = ds.RasterYSize
-                    minx = gt[0]
-                    maxy = gt[3]
-                    maxx = minx + gt[1] * xsize
-                    miny = maxy + gt[5] * ysize
-                    srs = ds.GetProjectionRef()
-                    ds = None
-                    return {
-                        "bbox": [minx, miny, maxx, maxy],
-                        "srs": srs
-                    }
-                else:
-                    logger.warning("GeoPDF konnte nicht für Metadaten geöffnet werden. Fallback auf QGIS-Layer.")
-            except Exception as e:
-                logger.warning(f"GDAL-Fehler beim Öffnen des PDFs: {e}. Fallback auf QGIS-Layer.")
-            # Fallback: Bounding Box und CRS direkt aus QGIS-Layer
-            extent = layer.extent()
-            bbox = [extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum()]
-            srs = layer.crs().authid() if layer.crs() else None
-            return {"bbox": bbox, "srs": srs}
+            return metadata
         return None
     except Exception as e:
         logger.error(f"DXF to GeoPDF conversion failed: {e}")
