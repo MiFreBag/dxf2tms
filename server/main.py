@@ -560,7 +560,11 @@ async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(v
         
         # SRS aus der Datenbank holen (gespeichert während der Konvertierung)
         file_srs = row[11] if len(row) > 11 else None
-        logger.info(f"Verwende SRS '{file_srs}' für TMS-Generierung von {file_id}")
+        if not file_srs or file_srs.strip() == '' or file_srs.lower() == 'none':
+            file_srs = 'EPSG:3857'  # Fallback-SRS
+            logger.warning(f"Kein SRS gefunden, setze Fallback SRS '{file_srs}' für TMS-Generierung von {file_id}")
+        else:
+            logger.info(f"Verwende SRS '{file_srs}' für TMS-Generierung von {file_id}")
 
         tms_dir = os.path.join(STATIC_ROOT, file_id)
         convert_pdf_to_tms(geopdf_path, tms_dir, minzoom=0, maxzoom=maxzoom, srs=file_srs)
