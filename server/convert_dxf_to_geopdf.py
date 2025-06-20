@@ -300,13 +300,14 @@ class DXFToGeoPDFConverter:
             raise
 
 def dxf_to_geopdf(dxf_path: str, pdf_path: str,
-                 crs_epsg: Optional[int] = None,
+                 crs_epsg: Optional[int] = 3857,
                  page_size: str = "A4",
                  dpi: int = 300,
                  return_metadata: bool = False) -> dict | None:
     """
     Hauptfunktion: DXF zu GeoPDF konvertieren (immer A4 quer, GeoPDF)
     Gibt optional Bounding Box und SRS zurück.
+    Setzt SRS auf EPSG:3857, falls keiner vorhanden ist.
     """
     if not QGIS_AVAILABLE:
         raise ModuleNotFoundError(
@@ -317,10 +318,19 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
         metadata = None
         with DXFToGeoPDFConverter() as converter:
             layer = converter.load_dxf_layer(dxf_path)
-            if crs_epsg:
-                crs = QgsCoordinateReferenceSystem(f"EPSG:{crs_epsg}")
+            # SRS prüfen und ggf. setzen
+            crs = layer.crs()
+            if not crs.isValid() or crs.authid().lower() in ("", "none"):
+                crs = QgsCoordinateReferenceSystem("EPSG:3857")
                 if crs.isValid():
                     layer.setCrs(crs)
+                    logger.warning(f"Kein SRS im DXF gefunden, setze EPSG:3857 für {dxf_path}")
+                else:
+                    logger.warning("Fallback SRS EPSG:3857 ist ungültig!")
+            elif crs_epsg:
+                crs2 = QgsCoordinateReferenceSystem(f"EPSG:{crs_epsg}")
+                if crs2.isValid():
+                    layer.setCrs(crs2)
                     logger.info(f"Set CRS to EPSG:{crs_epsg}")
                 else:
                     logger.warning(f"Invalid EPSG code: {crs_epsg}")
