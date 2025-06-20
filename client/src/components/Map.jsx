@@ -18,7 +18,17 @@ function MapController({ selectedLayer }) {
         bounds = selectedLayer.config.bounds
         console.log('Found bounds in config:', bounds)
       } else if (selectedLayer.bbox) {
-        bounds = selectedLayer.bbox
+        // Falls bbox ein String ist, parse ihn zu einem Array
+        let bboxArr = selectedLayer.bbox
+        if (typeof bboxArr === 'string') {
+          try {
+            bboxArr = JSON.parse(bboxArr)
+          } catch (e) {
+            console.warn('Konnte bbox nicht parsen:', selectedLayer.bbox)
+            bboxArr = null
+          }
+        }
+        bounds = bboxArr
         console.log('Found bounds in bbox:', bounds)
       } else if (selectedLayer.bounds) {
         bounds = selectedLayer.bounds
@@ -182,7 +192,22 @@ function Map() {
               {selectedLayer.config && selectedLayer.config.bounds ? (
                 <div><strong>Config Bounds:</strong> {selectedLayer.config.bounds.map(x => x.toFixed(2)).join(', ')}</div>
               ) : selectedLayer.bbox ? (
-                <div><strong>DB Bounds:</strong> {selectedLayer.bbox.map(x => x.toFixed(2)).join(', ')}</div>
+                (() => {
+                  // Falls bbox ein String ist, parse ihn zu einem Array
+                  let bboxArr = selectedLayer.bbox
+                  if (typeof bboxArr === 'string') {
+                    try {
+                      bboxArr = JSON.parse(bboxArr)
+                    } catch (e) {
+                      bboxArr = null
+                    }
+                  }
+                  return bboxArr && Array.isArray(bboxArr) ? (
+                    <div><strong>DB Bounds:</strong> {bboxArr.map(x => x.toFixed(2)).join(', ')}</div>
+                  ) : (
+                    <div><strong>DB Bounds:</strong> Nicht verfügbar</div>
+                  )
+                })()
               ) : selectedLayer.bounds ? (
                 <div><strong>Direct Bounds:</strong> {selectedLayer.bounds.map(x => x.toFixed(2)).join(', ')}</div>
               ) : selectedLayer.metadata && selectedLayer.metadata.bounds ? (

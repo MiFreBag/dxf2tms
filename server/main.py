@@ -25,6 +25,7 @@ import sqlite3
 from convert_dxf_to_geopdf import dxf_to_geopdf, convert_pdf_to_tms
 from convert_raster_to_geopdf import raster_to_geopdf
 from controllers.jobController import get_all_jobs, jobs_db, thread_lock
+from routes.jobRoutes import router as job_router
 import threading
 
 # Logging konfigurieren
@@ -842,6 +843,8 @@ async def start_maptiler_job(file_id: str, user: str = Depends(verify_token), db
         thread = threading.Thread(target=run_maptiler_job, args=(file_id, input_path, output_dir, job_id))
         thread.start()
     return {'job_id': job_id, 'status': 'queued'}
+
+app.include_router(job_router, prefix="/api/jobs")
 
 if __name__ == "__main__":
     import uvicorn
