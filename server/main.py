@@ -641,11 +641,11 @@ async def delete_file(file_id: str, user: str = Depends(verify_token), db: sqlit
 
 @app.get("/containers")
 async def get_container_status(user: str = Depends(verify_token)):
-    """Status der laufenden Docker-Container abrufen"""
+    """Status aller Docker-Container (laufend & gestoppt) und Images abrufen"""
     try:
         client = from_env()
         containers = []
-        for container in client.containers.list():
+        for container in client.containers.list(all=True):
             containers.append({
                 "id": str(container.id),
                 "name": str(container.name),
@@ -653,7 +653,15 @@ async def get_container_status(user: str = Depends(verify_token)):
                 "image": [str(tag) for tag in (container.image.tags or [])],
                 "created": str(container.attrs.get('Created', ''))
             })
-        return {"containers": containers}
+        images = []
+        for image in client.images.list():
+            images.append({
+                "id": str(image.id),
+                "tags": image.tags,
+                "created": str(image.attrs.get('Created', '')),
+                "size": image.attrs.get('Size', 0)
+            })
+        return {"containers": containers, "images": images}
     except Exception as e:
         import traceback
         logger.error(f"Fehler beim Abrufen des Container-Status: {e}\n{traceback.format_exc()}")
