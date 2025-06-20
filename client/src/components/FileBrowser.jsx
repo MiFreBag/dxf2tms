@@ -14,7 +14,8 @@ import {
   Layers, // Added import
   Image,
   Archive,
-  AlertCircle
+  AlertCircle,
+  FolderX // Icon for empty folder state
 } from 'lucide-react'
 
 const API = '/api'
@@ -273,10 +274,16 @@ function FileBrowser({ token, onMessage }) {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
+      {/* Header/Controls */}
       <div className="bg-white border-b p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">Datei-Browser</h2>
           <div className="flex gap-2">
+            {/* Optional: Upload Button hier, falls Upload im Browser gewünscht ist */}
+            {/* <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              Hochladen
+            </button> */}
             <button
               onClick={loadFiles}
               disabled={loading}
@@ -307,8 +314,14 @@ function FileBrowser({ token, onMessage }) {
       {/* Dateibaum */}
       <div className="flex-1 overflow-auto bg-white p-4">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <RefreshCw className="w-8 h-8 text-gray-400 animate-spin mb-4" />
             <div className="text-gray-500">Lade Dateien...</div>
+          </div>
+        ) : Object.keys(fileTree).length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
+            <FolderX className="w-12 h-12 text-gray-400 mb-4" />
+            Keine Verzeichnisse oder Dateien gefunden.
           </div>
         ) : (
           <div className="space-y-1">
