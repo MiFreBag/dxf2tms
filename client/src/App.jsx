@@ -442,7 +442,7 @@ function App() {
         <nav className="p-4">
           <ul className="space-y-2">
             {navItems.map(item => {
-              const Icon = item.icon
+              const Icon = item.icon;
               return (
                 <li key={item.id}>
                   <button
@@ -456,7 +456,7 @@ function App() {
                         : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <Icon className="w-5 h-5" />
+                    {typeof Icon === 'function' ? <Icon className="w-5 h-5" /> : null}
                     {item.label}
                   </button>
                 </li>
