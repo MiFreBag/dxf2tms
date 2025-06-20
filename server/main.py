@@ -105,18 +105,14 @@ with conn:
 # Erweiterung der Tabelle um weitere Metadatenfelder
 with conn:
     cursor = conn.cursor()
-    cursor.execute("""
-    ALTER TABLE files ADD COLUMN status TEXT DEFAULT 'uploaded'
-    """)
+    try:
+        cursor.execute("ALTER TABLE files ADD COLUMN status TEXT DEFAULT 'uploaded'")
+    except sqlite3.OperationalError:
+        pass  # Spalte existiert evtl. schon
     try:
         cursor.execute("ALTER TABLE files ADD COLUMN error_message TEXT")
     except sqlite3.OperationalError:
-        pass  # Spalte existiert evtl. schon
-    conn.commit()
-
-# Zusätzliche Spalten für Bounding Box und Layer-Infos
-with conn:
-    cursor = conn.cursor()
+        pass
     try:
         cursor.execute("ALTER TABLE files ADD COLUMN bbox TEXT")
     except sqlite3.OperationalError:
