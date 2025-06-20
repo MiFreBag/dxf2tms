@@ -506,7 +506,22 @@ async def convert_file(
                 raster_to_geopdf(input_path, geopdf_path, dpi=dpi, page_size=page_size)
             else:
                 raise HTTPException(status_code=400, detail="Unsupported file type for conversion")
-            # Serialisierung vor dem Speichern
+            # --- Fallbacks und Typkorrektur für bbox und srs ---
+            if bbox is None or not (isinstance(bbox, list) and len(bbox) == 4):
+                # Versuche Layer-Extent aus QGIS zu holen (als Fallback)
+                try:
+                    from convert_dxf_to_geopdf import DXFToGeoPDFConverter
+                    with DXFToGeoPDFConverter() as converter:
+                        layer = converter.load_dxf_layer(input_path)
+                        extent = layer.extent()
+                        bbox = [extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum()]
+                        if not srs or srs.lower() in ("", "none", None):
+                            srs = layer.crs().authid() or "EPSG:3857"
+                except Exception as e:
+                    bbox = [0, 0, 0, 0]
+                    if not srs:
+                        srs = "EPSG:3857"
+            # bbox als JSON-Array speichern, niemals als String
             bbox_str = json.dumps(bbox) if bbox is not None else None
             layer_info_str = json.dumps(layer_info) if layer_info is not None else None
             cursor.execute("UPDATE files SET converted = ?, path = ?, status = ?, error_message = NULL, bbox = ?, layer_info = ?, srs = ? WHERE id = ?", (True, geopdf_path, "converted", bbox_str, layer_info_str, srs, file_id))
