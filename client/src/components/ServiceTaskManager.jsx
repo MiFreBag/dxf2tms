@@ -1,6 +1,5 @@
 // ServiceTaskManager.jsx
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
 import {
   FaServer,
   FaMicrochip,
@@ -386,35 +385,25 @@ const generateMockHistory = () => {
   ];
 };
 
-const ServiceTaskManager = () => {
-  const [services, setServices] = useState([]);
-
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const response = await axios.get('/api/containers', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-        setServices(response.data.containers);
-      } catch (error) {
-        console.error('Fehler beim Abrufen der Container-Daten:', error);
-      }
-    };
-
-    fetchServices();
-  }, []);
+const ServiceTaskManager = ({ services = [] }) => {
+  const [expandedService, setExpandedService] = useState(null);
 
   return (
     <div>
-      {services.map((service) => (
-        <div key={service.id}>
-          <h3>{service.name}</h3>
-          <p>Status: {service.status}</p>
-          <p>Image: {service.image.join(', ')}</p>
+      {services.length === 0 ? (
+        <div className="text-gray-500 p-4">Keine Service-Daten vom Backend geladen.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {services.map((service) => (
+            <ServiceCard
+              key={service.id}
+              service={service}
+              expanded={expandedService === service.id}
+              onToggleExpand={(id) => setExpandedService(expandedService === id ? null : id)}
+            />
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 };
