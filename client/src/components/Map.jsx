@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, useMap, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 // Helper component to handle map updates
-function MapController({ selectedLayer }) {
+function MapController({ selectedLayer, onBoundsStatusChange }) {
   const map = useMap()
-  
   useEffect(() => {
     console.log('MapController - selectedLayer:', selectedLayer)
     
@@ -48,15 +47,20 @@ function MapController({ selectedLayer }) {
           map.fitBounds(leafletBounds, { 
             padding: [20, 20],
             maxZoom: 18 // Prevent zooming too far in
-          })
+          });
+          onBoundsStatusChange(true, 'Bounds fitted successfully.');
         } catch (error) {
-          console.error('Error fitting bounds:', error)
+          console.error('Error fitting bounds:', error);
+          onBoundsStatusChange(false, 'Error fitting bounds. Displaying default view.');
         }
       } else {
-        console.log('No valid bounds found for layer:', selectedLayer)
+        console.log('No valid bounds found for layer:', selectedLayer);
+        onBoundsStatusChange(false, 'No valid bounds found for this layer. Displaying default view.');
+        // Optionally, reset to a default view if desired when bounds are missing
+        // map.setView([47.3769, 8.5417], 10); 
       }
     }
-  }, [map, selectedLayer])
+  }, [map, selectedLayer, onBoundsStatusChange]);
   
   return null
 }
@@ -64,6 +68,7 @@ function MapController({ selectedLayer }) {
 function Map({ files = [], onDeleteLayer }) {
   const [selected, setSelected] = useState('')
   const [useMapServer, setUseMapServer] = useState(false)
+  const [boundsStatus, setBoundsStatus] = useState({ found: true, message: '' });
 
   // Layer-Liste aus Props
   const layers = files
@@ -83,6 +88,11 @@ function Map({ files = [], onDeleteLayer }) {
   // Handle layer selection
   const handleLayerSelect = (layerId) => {
     setSelected(layerId)
+    setBoundsStatus({ found: true, message: '' }); // Reset status on new layer selection
+  }
+
+  const handleBoundsStatusChange = (found, message) => {
+    setBoundsStatus({ found, message });
   }
 
 return (
@@ -202,7 +212,7 @@ return (
           attributionControl={true}
         >
           {/* Map Controller for handling bounds updates */}
-          <MapController selectedLayer={selectedLayer} />
+          <MapController selectedLayer={selectedLayer} onBoundsStatusChange={handleBoundsStatusChange} />
           
           {/* Base Layer */}
           <TileLayer
@@ -230,6 +240,13 @@ return (
         </MapContainer>
       </div>
       
+      {/* Bounds Status Message */}
+      {selectedLayer && !boundsStatus.found && (
+        <div className="mt-2 p-2 text-sm text-yellow-700 bg-yellow-100 border border-yellow-300 rounded-md text-center">
+          Hinweis: {boundsStatus.message}
+        </div>
+      )}
+
       {/* Status Bar */}
       <div className="mt-2 text-sm text-gray-500 text-center flex-shrink-0">
         {layers.length > 0 ? 

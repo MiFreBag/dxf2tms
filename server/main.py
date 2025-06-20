@@ -40,6 +40,11 @@ from system_metrics import (
     metrics_collector
 )
 
+# Am Anfang der main.py, bei den anderen Imports ergänzen:
+from controllers.jobController import get_all_jobs, jobs_db, thread_lock
+from routes.jobRoutes import router as job_router
+from routes.filebrowser_routes import router as filebrowser_router  # NEU: FileBrowser Router importieren
+
 # Logging konfigurieren
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1120,6 +1125,8 @@ async def system_health():
             "error": str(e),
             "timestamp": datetime.now().isoformat()
         }
+app.include_router(job_router, prefix="/api/jobs")
+app.include_router(filebrowser_router, prefix="/api/filebrowser")  # NEU: FileBrowser Router registrieren
 
 if __name__ == "__main__":
     import uvicorn

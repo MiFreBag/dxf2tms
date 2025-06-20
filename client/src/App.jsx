@@ -12,13 +12,15 @@ import {
   Layers,
   Menu,
   X,
-  BookOpen
+  BookOpen,
+  Folder
 } from 'lucide-react'
 import Map from './components/Map.jsx' // Import der Map Komponente
 import ServiceTaskManager from './components/ServiceTaskManager.jsx';
 import ContainerMonitor from './components/ContainerMonitor.jsx';
 import Login from './components/Login';
 import TmsPreviewDialog from './components/TmsPreviewDialog.jsx';
+import FileBrowser from './components/FileBrowser.jsx';
 
 // Leaflet CSS global importieren
 import 'leaflet/dist/leaflet.css';
