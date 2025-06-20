@@ -34,7 +34,7 @@ WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 
 # qgis-python und GDAL aus requirements filtern und restliche Pakete installieren
-RUN sed -e '/^qgis-python==/d' -e '/^GDAL==/d' requirements.txt > req_clean.txt \
+RUN sed -e '/^qgis-python==/d' -e '/^GDAL==/d' -e '/^gdal2tiles==/d' requirements.txt > req_clean.txt \
  && pip install --upgrade pip --no-cache-dir \
  && pip install --no-cache-dir -r req_clean.txt
 
