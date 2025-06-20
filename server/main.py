@@ -541,7 +541,7 @@ async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(v
 
 @app.get("/tms")
 async def list_tms():
-    """Alle TMS Layer auflisten"""
+    """Alle TMS Layer auflisten inkl. Metadaten"""
     layers = []
     try:
         if os.path.exists(STATIC_ROOT):
@@ -553,15 +553,20 @@ async def list_tms():
                     if os.path.exists(config_path):
                         with open(config_path) as f:
                             config = json.load(f)
-                    
+                    # Hole Metadaten aus DB
+                    with conn:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT name, bbox, srs FROM files WHERE id = ?", (name,))
+                        row = cursor.fetchone()
                     layers.append({
                         "id": name,
                         "url": f"/static/{name}",
                         "config": config,
+                        "fileName": row[0] if row else name,
+                        "bbox": row[1] if row else None,
+                        "srs": row[2] if row else None
                     })
-        
         return layers
-        
     except Exception as e:
         logger.error(f"Failed to list TMS layers: {e}")
         raise HTTPException(status_code=500, detail="Failed to list TMS layers")
