@@ -354,6 +354,7 @@ function App() {
   const navItems = [
     { id: 'upload', label: 'Upload & Convert', icon: Upload },
     { id: 'map', label: 'Kartenansicht', icon: MapPin },
+    { id: 'blobstore', label: 'Blobstore', icon: FileText },
     { id: 'n8n', label: 'n8n Workflow', icon: Layers },
     { id: 'service-task-manager', label: 'Service Task Manager', icon: Layers },
     { id: 'container-monitor', label: 'Container Monitor', icon: Layers },
@@ -705,6 +706,37 @@ function App() {
 
           {page === 'geopos-client' && (
             <GeoposClient />
+          )}
+
+          {page === 'blobstore' && (
+            <div className="bg-white rounded-lg shadow-sm border p-6 max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Blobstore: PDF-Vorschauen</h2>
+              {previewBlobs.length === 0 ? (
+                <div className="text-gray-500">Keine Blobs vorhanden.</div>
+              ) : (
+                <ul className="space-y-3">
+                  {previewBlobs.map(blob => (
+                    <li key={blob.fileId} className="flex items-center gap-3 border-b pb-2">
+                      <span className="flex-1 truncate">{blob.fileName}</span>
+                      <a
+                        href={blob.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
+                      >
+                        Vorschau öffnen
+                      </a>
+                      <button
+                        onClick={() => removePreviewBlob(blob.fileId)}
+                        className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
+                      >
+                        Entfernen
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </main>
       </div>
