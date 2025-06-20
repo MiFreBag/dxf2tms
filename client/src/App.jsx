@@ -17,7 +17,6 @@ import {
 import Map from './components/Map.jsx' // Import der Map Komponente
 import ServiceTaskManager from './components/ServiceTaskManager.jsx';
 import ContainerMonitor from './components/ContainerMonitor.jsx';
-import GeoposClient from './components/geopos/geopos_client.jsx';
 import Login from './components/Login';
 
 const API = '/api'
@@ -413,7 +412,6 @@ function App() {
     { id: 'n8n', label: 'n8n Workflow', icon: Layers },
     { id: 'service-task-manager', label: 'Service Task Manager', icon: Layers },
     { id: 'container-monitor', label: 'Container Monitor', icon: Layers },
-    { id: 'geopos-client', label: 'Geopos Client', icon: Navigation },
     { id: 'api-docs', label: 'API Docs', icon: BookOpen },
   ]
 
@@ -785,9 +783,6 @@ function App() {
             />
           )}
 
-          {page === 'geopos-client' && (
-            <GeoposClient />
-          )}
 
           {page === 'api-docs' && (
             <div className="h-full">
