@@ -30,14 +30,13 @@ function App() {
   const [messages, setMessages] = useState([])
   const [page, setPage] = useState('upload')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  // Fortschrittsanzeige-Status
   const [progress, setProgress] = useState({});
 
   // Neue States für Konvertierungsparameter und Dialog
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [convertParams, setConvertParams] = useState({ file: null, pageSize: 'A4', dpi: 300 });
   const [previewBlobs, setPreviewBlobs] = useState([]); // {fileId, fileName, url}
+  const [showBlobstore, setShowBlobstore] = useState(false);
 
   // State für TMS-Dialog
   const [showTmsDialog, setShowTmsDialog] = useState(false);
@@ -197,29 +196,6 @@ function App() {
       })
     }
   }
-
-  const handleConvertDXFToGeoPDF = async (fileId) => {
-    try {
-      const response = await fetch(`${API}/convert/${fileId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Conversion result:', result);
-        addMessage(`Datei erfolgreich konvertiert: ${result.fileName}`, 'success');
-        await fetchFiles();
-      } else {
-        throw new Error('Conversion failed');
-      }
-    } catch (error) {
-      addMessage('Fehler bei der Konvertierung der Datei', 'error');
-      console.error('Conversion error:', error);
-    }
-  };
 
   const handleBatchConvert = async () => {
     const unconvertedFiles = files.filter(f => !f.converted && !convertingFiles.has(f.id))
@@ -386,7 +362,6 @@ function App() {
   const navItems = [
     { id: 'upload', label: 'Upload & Convert', icon: Upload },
     { id: 'map', label: 'Kartenansicht', icon: MapPin },
-    { id: 'blobstore', label: 'Blobstore', icon: FileText },
     { id: 'n8n', label: 'n8n Workflow', icon: Layers },
     { id: 'service-task-manager', label: 'Service Task Manager', icon: Layers },
     { id: 'container-monitor', label: 'Container Monitor', icon: Layers },
@@ -475,14 +450,27 @@ function App() {
             >
               <Menu className="w-6 h-6" />
             </button>
-            
             <div className="flex items-center gap-4">
               <div className="hidden sm:block text-sm text-gray-600">
                 {files.length} Dateien • {files.filter(f => f.converted).length} konvertiert
               </div>
+              {/* Blobstore-Button mit Badge */}
+              <button
+                onClick={() => setShowBlobstore(true)}
+                className="relative px-3 py-1 bg-blue-100 hover:bg-blue-200 rounded-lg flex items-center gap-2 text-blue-700 font-medium"
+                title="PDF-Vorschauen anzeigen"
+              >
+                <FileText className="w-5 h-5" />
+                Blobs
+                {previewBlobs.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                    {previewBlobs.length}
+                  </span>
+                )}
+              </button>
               <button onClick={handleLogout} className="logout-button">
-    Logout
-</button>
+                Logout
+              </button>
             </div>
           </div>
         </header>
@@ -747,9 +735,16 @@ function App() {
             <GeoposClient />
           )}
 
-          {page === 'blobstore' && (
-            <div className="bg-white rounded-lg shadow-sm border p-6 max-w-2xl mx-auto">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Blobstore: PDF-Vorschauen</h2>
+        {/* Blobstore-Modal */}
+        {showBlobstore && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl mx-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Blobstore: PDF-Vorschauen</h2>
+                <button onClick={() => setShowBlobstore(false)} className="p-1 text-gray-500 hover:text-gray-700">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
               {previewBlobs.length === 0 ? (
                 <div className="text-gray-500">Keine Blobs vorhanden.</div>
               ) : (
@@ -776,74 +771,75 @@ function App() {
                 </ul>
               )}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Dialog für Konvertierungsparameter */}
+        {showConvertDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-80">
+              <h2 className="text-lg font-bold mb-4">Konvertierungsoptionen</h2>
+              <div className="mb-3">
+                <label className="block text-sm font-medium">Seitengröße</label>
+                <select
+                  className="w-full border rounded px-2 py-1"
+                  value={convertParams.pageSize}
+                  onChange={e => setConvertParams(p => ({ ...p, pageSize: e.target.value }))}
+                >
+                  <option value="A0">A0</option>
+                  <option value="A1">A1</option>
+                  <option value="A2">A2</option>
+                  <option value="A3">A3</option>
+                  <option value="A4">A4</option>
+                  <option value="A5">A5</option>
+                </select>
+              </div>
+              <div className="mb-3">
+                <label className="block text-sm font-medium">DPI</label>
+                <input
+                  type="number"
+                  min="72"
+                  max="1200"
+                  className="w-full border rounded px-2 py-1"
+                  value={convertParams.dpi}
+                  onChange={e => setConvertParams(p => ({ ...p, dpi: e.target.value }))}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setShowConvertDialog(false)}>Abbrechen</button>
+                <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={() => handleConvert(convertParams.file, convertParams.pageSize, convertParams.dpi)}>Konvertieren</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Dialog für TMS-Optionen */}
+        {showTmsDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-80">
+              <h2 className="text-lg font-bold mb-4">TMS-Optionen</h2>
+              <div className="mb-3">
+                <label className="block text-sm font-medium">Maximale Zoomstufe</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="22"
+                  className="w-full border rounded px-2 py-1"
+                  value={tmsParams.maxzoom}
+                  onChange={e => setTmsParams(p => ({ ...p, maxzoom: e.target.value }))}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setShowTmsDialog(false)}>Abbrechen</button>
+                <button className="px-3 py-1 bg-yellow-600 text-white rounded" onClick={() => handleCreateTms(tmsParams.file, tmsParams.maxzoom)}>TMS erzeugen</button>
+              </div>
+            </div>
+          </div>
+        )}
         </main>
       </div>
-
-      {/* Dialog für Konvertierungsparameter */}
-      {showConvertDialog && (
-  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg shadow-lg p-6 w-80">
-      <h2 className="text-lg font-bold mb-4">Konvertierungsoptionen</h2>
-      <div className="mb-3">
-        <label className="block text-sm font-medium">Seitengröße</label>
-        <select
-          className="w-full border rounded px-2 py-1"
-          value={convertParams.pageSize}
-          onChange={e => setConvertParams(p => ({ ...p, pageSize: e.target.value }))}
-        >
-          <option value="A0">A0</option>
-          <option value="A1">A1</option>
-          <option value="A2">A2</option>
-          <option value="A3">A3</option>
-          <option value="A4">A4</option>
-          <option value="A5">A5</option>
-        </select>
-      </div>
-      <div className="mb-3">
-        <label className="block text-sm font-medium">DPI</label>
-        <input
-          type="number"
-          min="72"
-          max="1200"
-          className="w-full border rounded px-2 py-1"
-          value={convertParams.dpi}
-          onChange={e => setConvertParams(p => ({ ...p, dpi: e.target.value }))}
-        />
-      </div>
-      <div className="flex justify-end gap-2">
-        <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setShowConvertDialog(false)}>Abbrechen</button>
-        <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={() => handleConvert(convertParams.file, convertParams.pageSize, convertParams.dpi)}>Konvertieren</button>
-      </div>
     </div>
-  </div>
-)}
-
-      {/* Dialog für TMS-Optionen */}
-      {showTmsDialog && (
-  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg shadow-lg p-6 w-80">
-      <h2 className="text-lg font-bold mb-4">TMS-Optionen</h2>
-      <div className="mb-3">
-        <label className="block text-sm font-medium">Maximale Zoomstufe</label>
-        <input
-          type="number"
-          min="0"
-          max="22"
-          className="w-full border rounded px-2 py-1"
-          value={tmsParams.maxzoom}
-          onChange={e => setTmsParams(p => ({ ...p, maxzoom: e.target.value }))}
-        />
-      </div>
-      <div className="flex justify-end gap-2">
-        <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setShowTmsDialog(false)}>Abbrechen</button>
-        <button className="px-3 py-1 bg-yellow-600 text-white rounded" onClick={() => handleCreateTms(tmsParams.file, tmsParams.maxzoom)}>TMS erzeugen</button>
-      </div>
-    </div>
-  </div>
-)}
-    </div>
-  )
+  );
 }
 
 export default App
