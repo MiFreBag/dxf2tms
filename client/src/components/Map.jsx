@@ -13,6 +13,14 @@ function Map() {
     fetch(`${API}/tms`).then(r => r.json()).then(setLayers).catch(console.error)
   }, [])
 
+  // Helper für TileLayer-URL (Leaflet erwartet absoluten Pfad)
+  const getTileLayerUrl = (layer) => {
+    // Backend liefert z.B. /static/uuid
+    // Wir brauchen /static/uuid/{z}/{x}/{y}.png
+    if (!layer) return '';
+    return `${layer.url}/{z}/{x}/{y}.png`;
+  };
+
   const current = layers.find(l => l.id === selected)
 
   const toggleMapServer = () => {
@@ -42,7 +50,7 @@ function Map() {
             : "&copy; <a href='https://www.geo.admin.ch/'>geo.admin.ch</a>"}
         />
         {current && (
-          <TileLayer url={`${current.url}/{z}/{x}/{y}.png`} />
+          <TileLayer url={getTileLayerUrl(current)} />
         )}
       </MapContainer>
     </>
