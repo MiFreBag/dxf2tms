@@ -517,19 +517,26 @@ async def list_tms():
         raise HTTPException(status_code=500, detail="Failed to list TMS layers")
 
 @app.get("/download/{file_id}")
-async def download_file(file_id: str, user: str = Depends(verify_token)):
+async def download_file(file_id: str, request: Request, user: str = Depends(verify_token)):
     """GeoPDF Datei herunterladen"""
     try:
+        logger.info(f"Download-Request für Datei: {file_id} von {request.client.host}")
         cursor.execute("SELECT * FROM files WHERE id = ?", (file_id,))
         row = cursor.fetchone()
         if not row or not row[2] or not row[4]:  # row[2]=Pfad, row[4]=converted
+            logger.warning(f"Download: Datei nicht gefunden oder nicht konvertiert: {file_id}")
             raise HTTPException(status_code=404, detail="GeoPDF not found")
 
         geopdf_path = row[2] if row[2].endswith('.pdf') else os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
         if not os.path.exists(geopdf_path):
+            logger.warning(f"Download: Datei auf Disk nicht gefunden: {geopdf_path}")
             raise HTTPException(status_code=404, detail="GeoPDF file missing on disk")
 
+        logger.info(f"Download wird ausgeliefert: {geopdf_path}")
         return FileResponse(geopdf_path, filename=f"{row[1].rsplit('.',1)[0]}_converted.pdf")
+    except HTTPException as e:
+        logger.error(f"HTTPException beim Download: {e.detail}")
+        raise
     except Exception as e:
         logger.error(f"Error downloading GeoPDF for file {file_id}: {e}")
         raise HTTPException(status_code=500, detail="Download failed")
