@@ -600,6 +600,29 @@ async def list_tms(db: sqlite3.Connection = Depends(get_db)):
         logger.error(f"Failed to list TMS layers: {e}")
         raise HTTPException(status_code=500, detail="Failed to list TMS layers")
 
+@app.delete("/api/tms/{tms_id}")
+async def delete_tms_layer(tms_id: str, user: str = Depends(verify_token)):
+    """Einen TMS-Layer und sein Verzeichnis löschen."""
+    try:
+        # Sicherheitsüberprüfung für tms_id, um Path Traversal zu verhindern
+        if not tms_id or ".." in tms_id or "/" in tms_id or "\\" in tms_id:
+            logger.warning(f"Ungültige TMS ID für Löschvorgang: {tms_id}")
+            raise HTTPException(status_code=400, detail="Ungültige TMS ID")
+
+        tms_layer_path = os.path.join(STATIC_ROOT, tms_id)
+        if not os.path.isdir(tms_layer_path):
+            logger.warning(f"TMS-Layer Verzeichnis nicht gefunden: {tms_layer_path}")
+            raise HTTPException(status_code=404, detail="TMS-Layer nicht gefunden")
+
+        shutil.rmtree(tms_layer_path) # shutil importieren, falls noch nicht geschehen
+        logger.info(f"TMS-Layer {tms_id} erfolgreich gelöscht von Benutzer {user}")
+        return {"message": f"TMS-Layer {tms_id} erfolgreich gelöscht"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Fehler beim Löschen des TMS-Layers {tms_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Fehler beim Löschen des TMS-Layers: {e}")
+
 @app.get("/download/{file_id}")
 async def download_file(file_id: str, request: Request, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
     """GeoPDF Datei herunterladen"""

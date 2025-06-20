@@ -690,6 +690,88 @@ function SVGViewer({ svgContent, onObjectClick, selectedObjects, tool }) {
   )
 }
 
+// Neue Komponente für TMS Layer Management
+function TmsManager({ token, showToast }) {
+  const [tmsLayers, setTmsLayers] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  const loadTmsLayers = async () => {
+    if (!token) return
+    setIsLoading(true)
+    try {
+      const response = await fetch(`${API}/tms`, { // API-Endpunkt aus main.py
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setTmsLayers(data)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        showToast(errorData.detail || 'Fehler beim Laden der TMS-Layer', 'error')
+      }
+    } catch (error) {
+      showToast('Netzwerkfehler beim Laden der TMS-Layer', 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadTmsLayers()
+  }, [token])
+
+  const handleDeleteTms = async (tmsId, tmsName) => {
+    if (!confirm(`Möchten Sie den TMS-Layer "${tmsName || tmsId}" wirklich löschen?`)) return
+    try {
+      const response = await fetch(`${API}/tms/${tmsId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (response.ok) {
+        showToast(`TMS-Layer ${tmsName || tmsId} erfolgreich gelöscht`, 'success')
+        loadTmsLayers() // Liste neu laden
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        showToast(errorData.detail || `Fehler beim Löschen von TMS-Layer ${tmsName || tmsId}`, 'error')
+      }
+    } catch (error) {
+      showToast('Netzwerkfehler beim Löschen des TMS-Layers', 'error')
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-4 w-80">
+      <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+        <Map className="w-5 h-5" /> {/* Geändertes Icon */}
+        TMS Layer
+      </h3>
+      <button
+        onClick={loadTmsLayers}
+        disabled={isLoading}
+        className="mb-3 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm disabled:bg-gray-300"
+      >
+        {isLoading ? 'Lädt...' : 'Aktualisieren'}
+      </button>
+      <div className="space-y-2 max-h-48 overflow-y-auto"> {/* Höhe angepasst */}
+        {tmsLayers.length === 0 && !isLoading && <p className="text-gray-500 text-sm">Keine TMS-Layer gefunden.</p>}
+        {tmsLayers.map((layer) => (
+          <div key={layer.id} className="p-2 rounded-lg border bg-gray-50 border-gray-200 text-sm">
+            <div className="flex items-center justify-between">
+              <a href={layer.url ? `${layer.url}/openlayers.html` : '#'} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline truncate" title={layer.fileName || layer.id}>
+                {layer.fileName || layer.id}
+              </a>
+              <button onClick={() => handleDeleteTms(layer.id, layer.fileName)} className="p-1 text-red-500 hover:text-red-700" title="TMS-Layer löschen">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+            {layer.config?.srs && <div className="text-xs text-gray-500">SRS: {layer.config.srs}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // Haupt-Geopos-Komponente
 export default function GeoposClient({ token }) {
   const [layers, setLayers] = useState([
@@ -1052,6 +1134,11 @@ export default function GeoposClient({ token }) {
             onObjectSelect={handleObjectSelect}
             filter={filter}
             onFilterChange={setFilter}
+          />
+          {/* TMS Manager Panel hinzufügen */}
+          <TmsManager
+            token={token}
+            showToast={showToast}
           />
         </div>
 
