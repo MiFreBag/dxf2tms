@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import os
 import logging
+import shutil # Hinzugefügt
 from typing import Optional
 
 try:
@@ -377,23 +378,32 @@ def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: i
     Konvertiert ein GeoPDF in einen TMS-Ordner (Tiles) mit gdal2tiles
     """
     import subprocess
+    # subprocess sollte bereits oben importiert sein, aber zur Sicherheit hier belassen, falls es eine lokale Funktion ist
     try:
         if not os.path.exists(tms_dir):
             os.makedirs(tms_dir)
-        # Statt python -m gdal2tiles: direkt das CLI-Skript aufrufen
-        gdal2tiles_bin = '/opt/venv/bin/gdal2tiles' if os.path.exists('/opt/venv/bin/gdal2tiles') else 'gdal2tiles'
+
+        # Finde gdal2tiles.py im PATH
+        gdal2tiles_executable = shutil.which('gdal2tiles.py')
+        if not gdal2tiles_executable:
+            logger.error("'gdal2tiles.py' nicht im Systempfad (PATH) gefunden.")
+            raise FileNotFoundError("[Errno 2] No such file or directory: 'gdal2tiles.py'")
+
         cmd = [
-            gdal2tiles_bin,
+            gdal2tiles_executable,
             '-z', f'{minzoom}-{maxzoom}',
             '-r', 'bilinear',
             '-w', 'none',
             pdf_path, tms_dir
         ]
         logger.info(f"Starte gdal2tiles: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        # Führe den Befehl aus und prüfe auf Fehler
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        
         if result.returncode != 0:
-            logger.error(f"gdal2tiles Fehler: {result.stderr}")
-            raise Exception(f"gdal2tiles failed: {result.stderr}")
+            error_output = result.stderr or result.stdout # Manchmal gehen Fehler nach stdout
+            logger.error(f"gdal2tiles Fehler (Return Code: {result.returncode}): {error_output}")
+            raise Exception(f"gdal2tiles failed (Return Code: {result.returncode}): {error_output}")
         logger.info(f"TMS erfolgreich erzeugt: {tms_dir}")
         return True
     except Exception as e:
