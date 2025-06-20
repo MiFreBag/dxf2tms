@@ -280,7 +280,7 @@ function App() {
     console.info('Vorschau-Klick:', file);
     if (file.converted) {
       try {
-        const response = await fetch(`/api/download/${file.id}`, {
+        const response = await fetch(`${API}/download/${file.id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -322,7 +322,7 @@ function App() {
     if (file.converted) {
       setProgress(prev => ({ ...prev, [file.id]: 'downloading' }));
       try {
-        const response = await fetch(`/api/download/${file.id}`, {
+        const response = await fetch(`${API}/download/${file.id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -803,7 +803,7 @@ function App() {
                 <p className="text-gray-600">Swagger UI der Backend-API</p>
               </div>
               <div className="h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border overflow-hidden">
-                <iframe src="/api/swagger" title="OpenAPI" className="w-full h-full border-none" />
+                <iframe src="/api/docs" title="OpenAPI" className="w-full h-full border-none" />
               </div>
             </div>
           )}
@@ -912,7 +912,7 @@ function App() {
 
         {/* TMS-Preview-Dialog */}
         {showTmsPreviewDialog && tmsPreviewFile && (
-          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
+          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setTmsPreviewDialog(false)} />
         )}
         </main>
       </div>
