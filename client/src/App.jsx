@@ -912,7 +912,7 @@ function App() {
 
         {/* TMS-Preview-Dialog */}
         {showTmsPreviewDialog && tmsPreviewFile && (
-          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setTmsPreviewDialog(false)} />
+          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
         )}
         </main>
       </div>
