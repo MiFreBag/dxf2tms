@@ -729,6 +729,16 @@ function App() {
                                         <Layers className="w-3 h-3" />
                                         MapTiler starten
                                       </button>
+                                      <button
+                                        onClick={() => {
+                                          setTmsPreviewFile(file);
+                                          setShowTmsPreviewDialog(true);
+                                        }}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-md transition-colors"
+                                      >
+                                        <Layers className="w-3 h-3" />
+                                        TMS Vorschau
+                                      </button>
                                     </div>
                                   )}
                                   <button 
