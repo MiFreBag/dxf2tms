@@ -21,8 +21,8 @@ from docker import from_env
 import sqlite3
 
 # Import der DXF- und Raster-Konvertierungsfunktionen
-from server.convert_dxf_to_geopdf import dxf_to_geopdf, convert_pdf_to_tms
-from server.convert_raster_to_geopdf import raster_to_geopdf
+from convert_dxf_to_geopdf import dxf_to_geopdf, convert_pdf_to_tms
+from convert_raster_to_geopdf import raster_to_geopdf
 
 # Logging konfigurieren
 logging.basicConfig(level=logging.INFO)
