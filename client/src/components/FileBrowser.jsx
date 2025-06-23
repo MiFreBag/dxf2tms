@@ -174,17 +174,6 @@ function FileBrowser({ token, onMessage }) {
   // Löschen ausführen
   const handleDelete = async () => {
         if (!deleteConfirm) return
-    try {
-      let deletedCount = 0;
-      for (const path of deleteConfirm) {
-        const uuid = extractUuid(path);
-        if (!uuid || uuid === path) {
-          // Kein gültiger UUID im Pfad → Ordner oder ungültig
-          onMessage?.(`Kann '${path}' nicht löschen (kein Datei-UUID)`, 'warning');
-          continue;
-        }
-        const response = await fetch(`${API}/files/${uuid}`, { // Endpunkt auf /api/files/{id} geändert
-          method: 'DELETE', // Methode auf DELETE geändert
       for (const fullPath of deleteConfirm) {
         let targetId;
         let endpoint;
@@ -215,8 +204,7 @@ function FileBrowser({ token, onMessage }) {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ path }),
+          }
         });
 
         if (!response.ok) {
