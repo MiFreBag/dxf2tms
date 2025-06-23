@@ -1,6 +1,6 @@
 version: '3'
-services:
 
+services:
   server:
     build: ./server
     ports:
@@ -23,7 +23,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s    
+      start_period: 40s
 
   client:
     build: ./client
@@ -37,8 +37,6 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # KORREKTUR: Die Zeile für entrypoint.sh wurde entfernt.
-      # Das Skript ist bereits im Docker-Image enthalten.
       - ./nginx/ssl:/etc/ssl/private:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/certbot/www:/var/www/certbot
@@ -48,7 +46,6 @@ services:
       - client
     restart: always
 
-  # Redis für Job Queue und Caching
   redis:
     image: redis:alpine
     container_name: dxf2geopdf-redis
@@ -57,10 +54,7 @@ services:
       - redis-data:/data
     restart: unless-stopped
 
-
-
-  # MapTiler Engine (on-demand, nicht dauerhaft laufend)
-  # Wird von der API per Docker SDK gestartet
+  # Optional: MapTiler Engine wird bei Bedarf via Docker SDK gestartet
   # maptiler:
   #   image: maptiler/engine:latest
   #   container_name: maptiler-engine
@@ -72,8 +66,7 @@ services:
   #   networks:
   #     - app-network
   #   profiles:
-  #     - tools  # Nur bei Bedarf starten
-
+  #     - tools
 
   n8n:
     image: docker.n8n.io/n8nio/n8n
@@ -89,19 +82,17 @@ services:
       - n8n_data:/home/node/.n8n
     restart: always
 
-
   tileserver:
     image: maptiler/tileserver-gl
     container_name: tileserver-gl
     volumes:
       - ./server/output:/data:rw
       - ./tileserver:/data
-    restart: unless-stopped
     command: ["-p", "80", "-c", "/data/conf.json"]
     ports:
       - "8081:80"
+    restart: unless-stopped
 
-  # PostgreSQL für erweiterte Features (optional)
   postgres:
     image: postgis/postgis:15-3.3
     container_name: dxf2geopdf-postgres
@@ -111,12 +102,10 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-
     restart: unless-stopped
     profiles:
-      - full  # Nur in "full" Profil starten
+      - full
 
-  # Monitoring mit Prometheus (optional)
   prometheus:
     image: prom/prometheus
     container_name: dxf2geopdf-prometheus
@@ -130,7 +119,6 @@ services:
     profiles:
       - monitoring
 
-  # Grafana für Visualisierung (optional)
   grafana:
     image: grafana/grafana
     container_name: dxf2geopdf-grafana
@@ -152,8 +140,3 @@ volumes:
   nginx-cache:
   prometheus-data:
   grafana-data:
-
-# Verwendung:
-# Standard-Start: docker-compose up -d
-# Mit allen Features: docker-compose --profile full --profile monitoring up -d
-# MapTiler manuell: docker-compose run --rm maptiler [commands]
