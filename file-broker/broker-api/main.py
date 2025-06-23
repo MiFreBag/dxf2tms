@@ -19,6 +19,7 @@ import aiofiles
 import jwt
 from PIL import Image
 import io
+from routes.maptiler_routes import router as maptiler_router
 
 # Configuration
 class Config:
@@ -470,6 +471,9 @@ async def login(user_id: str):
         algorithm="HS256"
     )
     return {"access_token": token, "token_type": "bearer"}
+
+# Register MapTiler Router
+app.include_router(maptiler_router, prefix="/api")
 
 @app.post("/files/upload", response_model=FileUploadResponse)
 async def upload_file(
