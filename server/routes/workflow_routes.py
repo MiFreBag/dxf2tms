@@ -13,7 +13,11 @@ import zipfile
 import geopandas as gpd
 from osgeo import ogr, gdal
 import pandas as pd
-from main import verify_token
+
+try:
+    from main import verify_token, get_db, logger
+except ImportError:
+    from server.main import verify_token, get_db, logger
 
 router = APIRouter()
 
