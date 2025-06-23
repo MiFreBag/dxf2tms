@@ -167,14 +167,21 @@ function FileBrowser({ token, onMessage }) {
   // Löschen ausführen
   const handleDelete = async () => {
     if (!deleteConfirm) return
-    
     try {
-      // In echter Implementierung: API-Aufrufe zum Löschen
       for (const path of deleteConfirm) {
-        console.log('Lösche:', path)
-        // await fetch(`${API}/files/delete`, { method: 'DELETE', body: JSON.stringify({ path }) })
+        // Echten API-Call zum Löschen durchführen
+        const response = await fetch(`${API}/filebrowser/delete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ path }),
+        })
+        if (!response.ok) {
+          throw new Error(`Fehler beim Löschen von ${path}`)
+        }
       }
-      
       onMessage?.(`${deleteConfirm.length} Element(e) gelöscht`, 'success')
       setSelectedItems(new Set())
       setDeleteConfirm(null)
