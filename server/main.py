@@ -28,6 +28,8 @@ from controllers.jobController import get_all_jobs, jobs_db, thread_lock
 from routes.jobRoutes import router as job_router
 import threading
 
+from routes.workflow_routes import router as workflow_router, init_workflow_tables
+
 # Logging konfigurieren - FRÜHER DEFINIEREN
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -54,6 +56,13 @@ if filebrowser_routes_spec is not None:
 else:
     logger.error("Module 'routes.filebrowser_routes' not found. File browser functionality will be unavailable.")
     logger.error("Please ensure 'server/routes/filebrowser_routes.py' and 'server/routes/__init__.py' exist.")
+
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=noreply@yourapp.com
 
 # Konfiguration
 UPLOAD_DIR = "uploads"
@@ -156,6 +165,13 @@ with sqlite3.connect(DB_PATH) as conn:
     except sqlite3.OperationalError:
         pass
     conn.commit()
+
+# Nach der DB-Initialisierung:
+with sqlite3.connect(DB_PATH) as conn:
+    init_workflow_tables(conn)
+
+# Router registrieren:
+app.include_router(workflow_router, prefix="/api")
 
 # Verzeichnisse erstellen
 for directory in [UPLOAD_DIR, OUTPUT_DIR, STATIC_ROOT, TEMPLATES_DIR]:

@@ -48,13 +48,35 @@ services:
       - client
     restart: always
 
-  maptiler:
-    image: maptiler/engine:latest
+  # Redis für Job Queue und Caching
+  redis:
+    image: redis:alpine
+    container_name: dxf2geopdf-redis
+    command: redis-server --appendonly yes
     volumes:
-      - ./server/output:/data/input:ro
-      - ./maptiler-output:/data/output
-    environment:
-      - MT_KEY=replace-with-your-license
+      - redis-data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+
+
+
+  # MapTiler Engine (on-demand, nicht dauerhaft laufend)
+  # Wird von der API per Docker SDK gestartet
+  # maptiler:
+  #   image: maptiler/engine:latest
+  #   container_name: maptiler-engine
+  #   volumes:
+  #     - ./uploads:/input:ro
+  #     - ./maptiler_output:/output:rw
+  #   environment:
+  #     - MAPTILER_LICENSE_KEY=${MAPTILER_LICENSE_KEY}
+  #   networks:
+  #     - app-network
+  #   profiles:
+  #     - tools  # Nur bei Bedarf starten
+
+
   n8n:
     image: docker.n8n.io/n8nio/n8n
     ports:
@@ -81,8 +103,64 @@ services:
     ports:
       - "8081:80"
 
-volumes:
-  n8n_data:
-  uploads:
-  output:
+  # PostgreSQL für erweiterte Features (optional)
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: dxf2geopdf-postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-geopdf}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - full  # Nur in "full" Profil starten
 
+  # Monitoring mit Prometheus (optional)
+  prometheus:
+    image: prom/prometheus
+    container_name: dxf2geopdf-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Grafana für Visualisierung (optional)
+  grafana:
+    image: grafana/grafana
+    container_name: dxf2geopdf-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - app-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  redis-data:
+  postgres-data:
+  n8n-data:
+  nginx-cache:
+  prometheus-data:
+  grafana-data:
+
+# Verwendung:
+# Standard-Start: docker-compose up -d
+# Mit allen Features: docker-compose --profile full --profile monitoring up -d
+# MapTiler manuell: docker-compose run --rm maptiler [commands]
