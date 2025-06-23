@@ -70,9 +70,6 @@ def init_workflow_tables(conn):
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS export_jobs (
         id TEXT PRIMARY KEY,
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS export_jobs (
-        id TEXT PRIMARY KEY,
         file_ids TEXT,
         format TEXT,
         options TEXT,
@@ -579,6 +576,9 @@ async def trigger_webhooks_for_event(event: str, data: Dict, user: str, db: sqli
     
     db.commit()
 
+# EXPORT FUNKTIONEN
+
+async def export_to_geojson(file_ids: List[str], export_dir: str, options: Dict) -> str:
 # EXPORT FUNKTIONEN
 
 async def export_to_geojson(file_ids: List[str], export_dir: str, options: Dict) -> str:
