@@ -778,6 +778,9 @@ function App() {
             </div>
           )}
           
+          {page === 'filebrowser' && (
+            <FileBrowser token={token} onMessage={addMessage} />
+          )}
           {page === 'map' && (
             <div className="h-full">
               <div className="mb-6">
