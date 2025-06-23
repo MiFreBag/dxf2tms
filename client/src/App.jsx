@@ -48,13 +48,6 @@ function App() {
   const [showTmsDialog, setShowTmsDialog] = useState(false);
   const [tmsParams, setTmsParams] = useState({ file: null, maxzoom: 20 });
 
-  // State für API-Dokumentation
-  const [showApiDocs, setShowApiDocs] = useState(false);
-
-  // State für TMS-Preview-Dialog
-  const [showTmsPreviewDialog, setShowTmsPreviewDialog] = useState(false);
-  const [tmsPreviewFile, setTmsPreviewFile] = useState(null);
-
   // addMessage muss VOR allen useCallback-Hooks stehen, die es als Abhängigkeit nutzen!
   const addMessage = useCallback((text, type = 'info') => {
     const id = Date.now();
@@ -93,7 +86,7 @@ function App() {
   };
 
   // Fetch initial data
-  const fetchFiles = useCallback(async (showAll = true) => {
+  const fetchFiles = useCallback(async () => {
     try {
       let url = `${API}/files`;
       // Wenn showAll false ist, filtere nach aktuellem User (optional)
@@ -962,11 +955,6 @@ function App() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* TMS-Preview-Dialog */}
-        {showTmsPreviewDialog && tmsPreviewFile && (
-          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setTmsPreviewDialog(false)} />
         )}
         </main>
       </div>
