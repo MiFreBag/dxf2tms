@@ -14,7 +14,7 @@ import geopandas as gpd
 from osgeo import ogr, gdal
 import pandas as pd
 
-from server.deps import verify_token, get_db, logger
+from deps import verify_token, get_db, logger
 
 router = APIRouter()
 
