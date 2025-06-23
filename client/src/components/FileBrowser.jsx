@@ -164,15 +164,21 @@ function FileBrowser({ token, onMessage }) {
     setDeleteConfirm(Array.from(selectedItems))
   }
 
+  // Hilfsfunktion: Extrahiere UUID aus Pfad
+  const extractUuid = (path) => {
+    // Sucht nach UUID im Pfad, z.B. uploads/uuid.dxf
+    const match = path.match(/[0-9a-fA-F-]{36}/);
+    return match ? match[0] : path;
+  };
+
   // Löschen ausführen
   const handleDelete = async () => {
     if (!deleteConfirm) return
     try {
       for (const path of deleteConfirm) {
-        // Annahme: 'path' ist hier die eindeutige ID (UUID) der Datei.
-        // Dies muss mit dem Backend-Endpunkt DELETE /api/files/{file_id} oder /api/tms/{tms_id} übereinstimmen.
-        const response = await fetch(`${API}/files/${path}`, { // Endpunkt auf /api/files/{id} geändert
-          method: 'DELETE', // Methode auf DELETE geändert
+        const uuid = extractUuid(path);
+        const response = await fetch(`${API}/files/${uuid}`, {
+          method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
