@@ -169,9 +169,10 @@ function FileBrowser({ token, onMessage }) {
     if (!deleteConfirm) return
     try {
       for (const path of deleteConfirm) {
-        // Echten API-Call zum Löschen durchführen
-        const response = await fetch(`${API}/filebrowser/delete`, {
-          method: 'POST',
+        // Annahme: 'path' ist hier die eindeutige ID (UUID) der Datei.
+        // Dies muss mit dem Backend-Endpunkt DELETE /api/files/{file_id} oder /api/tms/{tms_id} übereinstimmen.
+        const response = await fetch(`${API}/files/${path}`, { // Endpunkt auf /api/files/{id} geändert
+          method: 'DELETE', // Methode auf DELETE geändert
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
