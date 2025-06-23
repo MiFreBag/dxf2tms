@@ -13,7 +13,7 @@ import zipfile
 import geopandas as gpd
 from osgeo import ogr, gdal
 import pandas as pd
-from ..main import verify_token
+from main import verify_token
 
 router = APIRouter()
 
