@@ -48,6 +48,10 @@ function App() {
   const [showTmsDialog, setShowTmsDialog] = useState(false);
   const [tmsParams, setTmsParams] = useState({ file: null, maxzoom: 20 });
 
+  // State für TMS-Preview-Dialog
+  const [showTmsPreviewDialog, setShowTmsPreviewDialog] = useState(false);
+  const [tmsPreviewFile, setTmsPreviewFile] = useState(null);
+
   // addMessage muss VOR allen useCallback-Hooks stehen, die es als Abhängigkeit nutzen!
   const addMessage = useCallback((text, type = 'info') => {
     const id = Date.now();
@@ -955,6 +959,11 @@ function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Dialog für TMS-Preview */}
+        {showTmsPreviewDialog && tmsPreviewFile && (
+          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
         )}
         </main>
       </div>
