@@ -36,6 +36,7 @@ function App() {
   const [dockerServicesData, setDockerServicesData] = useState([]);
   const [dockerContainers, setDockerContainers] = useState([]);
   const [dockerImages, setDockerImages] = useState([]);
+  const [tmsLayers, setTmsLayers] = useState([]); // New state for TMS layers
   const [dockerVolumes, setDockerVolumes] = useState([]);
 
   // Neue States für Konvertierungsparameter und Dialog
@@ -115,6 +116,30 @@ function App() {
     }
   }, [token]);
 
+  // Fetch TMS layers
+  const fetchTmsLayers = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API}/tms`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTmsLayers(data);
+      } else if (response.status === 403) {
+        console.error('Token abgelaufen beim Laden der TMS-Daten');
+        handleTokenExpiration();
+      } else {
+        addMessage(`Fehler beim Abrufen der TMS-Daten: ${response.status}`, 'error');
+      }
+    } catch (error) {
+      console.error('Fehler beim Abrufen der TMS-Daten:', error);
+      addMessage('Netzwerkfehler beim Abrufen der TMS-Daten.', 'error');
+    }
+  }, [token, addMessage]);
+
   const fetchDockerServices = useCallback(async () => {
     if (!token) return;
     try {
@@ -159,8 +184,11 @@ function App() {
     } else {
         fetchFiles();
         fetchDockerServices();
+        if (page === 'map') {
+            fetchTmsLayers(); // Fetch TMS layers when the map page is active
+        }
     }
-  }, [token, fetchFiles, fetchDockerServices]);
+  }, [token, fetchFiles, fetchDockerServices, page, fetchTmsLayers]);
 
   const handleTokenExpiration = () => {
     localStorage.removeItem('token');
@@ -784,12 +812,12 @@ function App() {
           {page === 'map' && (
             <div className="h-full">
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Kartenansicht</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Kartenansicht ({tmsLayers.length} TMS Layer)</h2>
                 <p className="text-gray-600">Konvertierte TMS-Layer auf der Karte anzeigen</p>
               </div>
               {/* Verwendung der Map.jsx Komponente */}
               <div className="h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border overflow-hidden">
-                <Map />
+                <Map tmsLayers={tmsLayers} />
               </div>
             </div>
           )}
