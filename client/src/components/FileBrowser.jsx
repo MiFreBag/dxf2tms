@@ -176,11 +176,57 @@ function FileBrowser({ token, onMessage }) {
     if (!deleteConfirm) return
     try {
       let deletedCount = 0;
-      for (const path of deleteConfirm) {
-        const uuid = extractUuid(path);
-        if (!uuid || uuid === path) {
-          // Kein gültiger UUID im Pfad → Ordner oder ungültig
-          onMessage?.(`Kann '${path}' nicht löschen (kein Datei-UUID)`, 'warning');
+      for (const fullPath of deleteConfirm) {
+        let targetId;
+        let endpoint;
+
+        // Check if it's a TMS layer (folder under 'tms/')
+        if (fullPath.startsWith('tms/')) {
+          // Extract the TMS layer ID (the folder name after 'tms/')
+          const parts = fullPath.split('/');
+          if (parts.length < 2) { // e.g., just 'tms/'
+            onMessage?.(`Ungültiger TMS-Pfad: ${fullPath}`, 'warning');
+            continue;
+          }
+          targetId = parts[1]; // The ID of the TMS layer (e.g., 'layer1' or a UUID)
+          endpoint = `${API}/tms/${targetId}`;
+        } else {
+          // Assume it's a file managed by the /api/files endpoint
+          // Extract UUID from the path (e.g., 'uploads/uuid.dxf' -> 'uuid')
+          targetId = extractUuid(fullPath);
+          if (!targetId || targetId === fullPath) {
+            onMessage?.(`Kann '${fullPath}' nicht löschen (kein gültiger ID gefunden)`, 'warning');
+            continue;
+          }
+          endpoint = `${API}/files/${targetId}`;
+        }
+
+        const response = await fetch(endpoint, {
+          method: 'DELETE',
+          // No body is needed for DELETE requests in FastAPI for these endpoints
+          // body: JSON.stringify({ path: fullPath }), // This line is removed
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`Fehler beim Löschen von ${fullPath}: ${errorData.detail || response.statusText}`);
+        }
+        deletedCount++;
+      }
+      if (deletedCount > 0) {
+        onMessage?.(`${deletedCount} Element(e) gelöscht`, 'success');
+      }
+      setSelectedItems(new Set());
+      setDeleteConfirm(null);
+      await loadFiles(); // Neu laden
+    } catch (error) {
+      console.error('Fehler beim Löschen:', error);
+      onMessage?.('Fehler beim Löschen', 'error');
+    }
+  };
           continue;
         }
         const response = await fetch(`${API}/files/${uuid}`, {
