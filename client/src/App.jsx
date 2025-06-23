@@ -5,7 +5,7 @@ import {
   CheckCircle, Clock, AlertCircle, X, Eye,
   Share2, Copy, MoreVertical, Filter
 } from 'lucide-react';
-import FileBrokerUI from './components/FileManager/FileManager';
+import FileBrowser from './components/FileBrowser';
 import MapTilerComponent from './components/MapTiler/MapTilerComponent';
 import './styles/globals.css';
 
@@ -47,7 +47,7 @@ function App() {
 
   return (
     <div className="bg-gray-100 min-h-screen">
-      <FileBrokerUI token={token} onMessage={addMessage} />
+      <FileBrowser token={token} onMessage={addMessage} />
       <div className="p-4 md:p-8">
         <div className="max-w-7xl mx-auto bg-white rounded-lg shadow">
           <MapTilerComponent token={token} onMessage={addMessage} />
