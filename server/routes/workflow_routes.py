@@ -579,9 +579,6 @@ async def trigger_webhooks_for_event(event: str, data: Dict, user: str, db: sqli
 # EXPORT FUNKTIONEN
 
 async def export_to_geojson(file_ids: List[str], export_dir: str, options: Dict) -> str:
-# EXPORT FUNKTIONEN
-
-async def export_to_geojson(file_ids: List[str], export_dir: str, options: Dict) -> str:
     """Export zu GeoJSON"""
     features = []
     
