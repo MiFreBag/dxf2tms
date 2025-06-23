@@ -11,6 +11,7 @@ urllib3==1.26.18
 gdal2tiles==0.1.9
 aiosmtplib
 httpx
+geopandas==0.14.3  # Für Workflow-Routen benötigt
 
 # Neue Dependencies für System-Monitoring
 psutil==5.9.6          # System- und Prozess-Monitoring
