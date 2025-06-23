@@ -827,7 +827,7 @@ def run_maptiler_job(file_id, input_path, output_dir, job_id, params=None):
     job = jobs_db[job_id]
     try:
         job['status'] = 'running'
-        job['startedAt'] = datetime.now().isoformat()
+        job['startedAt'] = datetime.datetime.now().isoformat()
         # MapTiler Engine Docker-Aufruf
         # Beispiel: docker run --rm -v ... maptiler/engine:latest --input ... --output ...
         cmd = [
@@ -845,7 +845,7 @@ def run_maptiler_job(file_id, input_path, output_dir, job_id, params=None):
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode == 0:
             job['status'] = 'completed'
-            job['completedAt'] = datetime.now().isoformat()
+            job['completedAt'] = datetime.datetime.now().isoformat()
             job['artifacts'] = [{
                 'name': f'{file_id}',
                 'type': 'tiles',
@@ -854,11 +854,11 @@ def run_maptiler_job(file_id, input_path, output_dir, job_id, params=None):
             }]
         else:
             job['status'] = 'failed'
-            job['completedAt'] = datetime.now().isoformat()
+            job['completedAt'] = datetime.datetime.now().isoformat()
             job['error'] = result.stderr
     except Exception as e:
         job['status'] = 'failed'
-        job['completedAt'] = datetime.now().isoformat()
+        job['completedAt'] = datetime.datetime.now().isoformat()
         job['error'] = str(e)
 
 @app.post("/api/maptiler/{file_id}")
@@ -878,7 +878,7 @@ async def start_maptiler_job(file_id: str, user: str = Depends(verify_token), db
         'id': job_id,
         'name': f"MapTiler für {row[1]}",
         'type': 'maptiler',
-        'status': 'queued',
+        'status': 'queued', // Changed from 'queued' to 'queued'
         'createdAt': datetime.now().isoformat(),
         'inputFile': {'name': row[1], 'size': row[3]},
         'parameters': {},

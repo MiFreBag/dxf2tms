@@ -173,9 +173,18 @@ function FileBrowser({ token, onMessage }) {
 
   // Löschen ausführen
   const handleDelete = async () => {
-    if (!deleteConfirm) return
+        if (!deleteConfirm) return
     try {
       let deletedCount = 0;
+      for (const path of deleteConfirm) {
+        const uuid = extractUuid(path);
+        if (!uuid || uuid === path) {
+          // Kein gültiger UUID im Pfad → Ordner oder ungültig
+          onMessage?.(`Kann '${path}' nicht löschen (kein Datei-UUID)`, 'warning');
+          continue;
+        }
+        const response = await fetch(`${API}/files/${uuid}`, { // Endpunkt auf /api/files/{id} geändert
+          method: 'DELETE', // Methode auf DELETE geändert
       for (const fullPath of deleteConfirm) {
         let targetId;
         let endpoint;
@@ -203,14 +212,15 @@ function FileBrowser({ token, onMessage }) {
 
         const response = await fetch(endpoint, {
           method: 'DELETE',
-          // No body is needed for DELETE requests in FastAPI for these endpoints
-          // body: JSON.stringify({ path: fullPath }), // This line is removed
           headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
+          body: JSON.stringify({ path }),
         });
 
         if (!response.ok) {
+
           const errorData = await response.json().catch(() => ({}));
           throw new Error(`Fehler beim Löschen von ${fullPath}: ${errorData.detail || response.statusText}`);
         }
