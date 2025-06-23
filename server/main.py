@@ -719,13 +719,18 @@ async def delete_file(file_id: str, user: str = Depends(verify_token), db: sqlit
         if not row:
             raise HTTPException(status_code=404, detail="File not found")
         file_path = row[0]
+        logger.info(f"Attempting to delete file: {file_path}")
         if os.path.exists(file_path):
             os.remove(file_path)
+            logger.info(f"Successfully deleted file: {file_path}")
         cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
         db.commit()
         return {"message": "Datei erfolgreich gelöscht"}
-    except Exception as e:
-        logger.error(f"Fehler beim Löschen der Datei: {e}")
+    except OSError as e: # Catch specific OSError for file operations
+        logger.error(f"OSError when deleting file {file_path}: {e.strerror} (Error Code: {e.errno})")
+        raise HTTPException(status_code=500, detail=f"Fehler beim Löschen der Datei: {e.strerror}")
+    except Exception as e: # Catch other unexpected errors
+        logger.error(f"Unexpected error when deleting file {file_path}: {e}")
         raise HTTPException(status_code=500, detail="Fehler beim Löschen der Datei")
 
 @app.get("/api/containers")

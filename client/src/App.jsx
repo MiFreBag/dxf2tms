@@ -52,6 +52,7 @@ function App() {
   // State für TMS-Preview-Dialog
   const [showTmsPreviewDialog, setShowTmsPreviewDialog] = useState(false);
   const [tmsPreviewFile, setTmsPreviewFile] = useState(null);
+  const [creatingTms, setCreatingTms] = useState(new Set()); // State for TMS creation loading
 
   // addMessage muss VOR allen useCallback-Hooks stehen, die es als Abhängigkeit nutzen!
   const addMessage = useCallback((text, type = 'info') => {
@@ -71,6 +72,7 @@ function App() {
   // Handler für TMS-Erstellung
   const handleCreateTms = async (file, maxzoom = 20) => {
     setShowTmsDialog(false);
+    setCreatingTms(prev => new Set([...prev, file.id])); // Start loading
     try {
       const response = await fetch(`${API}/tms/${file.id}?maxzoom=${maxzoom}`, {
         method: 'POST',
@@ -80,6 +82,7 @@ function App() {
       });
       if (response.ok) {
         addMessage(`TMS für ${file.name} erfolgreich erzeugt`, 'success');
+        await fetchTmsLayers(); // Refresh the TMS layer list for the map
       } else {
         const err = await response.json();
         addMessage(`TMS-Fehler: ${err.detail || 'Unbekannter Fehler'}`, 'error');
@@ -87,6 +90,12 @@ function App() {
     } catch (error) {
       addMessage('Fehler bei der TMS-Erstellung', 'error');
       console.error('TMS-Fehler:', error);
+    } finally {
+      setCreatingTms(prev => { // End loading
+        const newSet = new Set(prev);
+        newSet.delete(file.id);
+        return newSet;
+      });
     }
   };
 
@@ -726,10 +735,20 @@ function App() {
                                       </button>
                                       <button
                                         onClick={() => handleOpenTmsDialog(file)}
-                                        className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-md transition-colors"
+                                        disabled={creatingTms.has(file.id)}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-md transition-colors disabled:bg-gray-400"
                                       >
-                                        <Layers className="w-3 h-3" />
-                                        TMS erzeugen
+                                        {creatingTms.has(file.id) ? (
+                                          <>
+                                            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            Erzeuge...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Layers className="w-3 h-3" />
+                                            TMS erzeugen
+                                          </>
+                                        )}
                                       </button>
                                       <button
                                         onClick={async () => {
