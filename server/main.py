@@ -57,12 +57,11 @@ else:
     logger.error("Module 'routes.filebrowser_routes' not found. File browser functionality will be unavailable.")
     logger.error("Please ensure 'server/routes/filebrowser_routes.py' and 'server/routes/__init__.py' exist.")
 
-
-SMTP_HOST=smtp.gmail.com
+SMTP_HOST="smtp.gmail.com"
 SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-SMTP_FROM=noreply@yourapp.com
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-app-password"
+SMTP_FROM="noreply@yourapp.com"
 
 # Konfiguration
 UPLOAD_DIR = "uploads"
