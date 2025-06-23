@@ -14,10 +14,7 @@ import geopandas as gpd
 from osgeo import ogr, gdal
 import pandas as pd
 
-try:
-    from main import verify_token, get_db, logger
-except ImportError:
-    from server.main import verify_token, get_db, logger
+from main import verify_token, get_db, logger
 
 router = APIRouter()
 
@@ -70,6 +67,9 @@ def init_workflow_tables(conn):
     """)
     
     # Export Jobs Tabelle
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS export_jobs (
+        id TEXT PRIMARY KEY,
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS export_jobs (
         id TEXT PRIMARY KEY,
