@@ -226,32 +226,6 @@ function FileBrowser({ token, onMessage }) {
       console.error('Fehler beim Löschen:', error);
       onMessage?.('Fehler beim Löschen', 'error');
     }
-  };
-          continue;
-        }
-        const response = await fetch(`${API}/files/${uuid}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ path }),
-        })
-        if (!response.ok) {
-          throw new Error(`Fehler beim Löschen von ${path}`)
-        }
-        deletedCount++;
-      }
-      if (deletedCount > 0) {
-        onMessage?.(`${deletedCount} Datei(en) gelöscht`, 'success')
-      }
-      setSelectedItems(new Set())
-      setDeleteConfirm(null)
-      await loadFiles() // Neu laden
-    } catch (error) {
-      console.error('Fehler beim Löschen:', error)
-      onMessage?.('Fehler beim Löschen', 'error')
-    }
   }
 
   // Dateigröße formatieren
