@@ -55,8 +55,6 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
-    networks:
-      - app-network
     restart: unless-stopped
 
 
@@ -113,8 +111,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    networks:
-      - app-network
+
     restart: unless-stopped
     profiles:
       - full  # Nur in "full" Profil starten
@@ -129,8 +126,6 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-    networks:
-      - app-network
     restart: unless-stopped
     profiles:
       - monitoring
@@ -146,8 +141,6 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
     volumes:
       - grafana-data:/var/lib/grafana
-    networks:
-      - app-network
     restart: unless-stopped
     profiles:
       - monitoring
