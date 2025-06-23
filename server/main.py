@@ -726,10 +726,12 @@ async def delete_file(file_id: str, user: str = Depends(verify_token), db: sqlit
         cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
         db.commit()
         return {"message": "Datei erfolgreich gelöscht"}
-    except OSError as e: # Catch specific OSError for file operations
+    except HTTPException: # Re-raise FastAPI's HTTPException directly
+        raise
+    except OSError as e: # Catch specific OSError for file operations, file_path is defined here
         logger.error(f"OSError when deleting file {file_path}: {e.strerror} (Error Code: {e.errno})")
         raise HTTPException(status_code=500, detail=f"Fehler beim Löschen der Datei: {e.strerror}")
-    except Exception as e: # Catch other unexpected errors
+    except Exception as e: # Catch other unexpected errors, file_path might not be defined
         logger.error(f"Unexpected error when deleting file {file_path}: {e}")
         raise HTTPException(status_code=500, detail="Fehler beim Löschen der Datei")
 
