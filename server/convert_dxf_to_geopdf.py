@@ -499,8 +499,9 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
         return metadata
         
     except Exception as e:
-        logger.error(f"DXF to GeoPDF conversion failed: {e}")
-        raise Exception(f"Conversion failed: {str(e)}")
+        logger.error(f"DXF to GeoPDF conversion failed: {e}", exc_info=True)
+        # Fehlertext für API-Response und Debugging ausführlich machen
+        raise Exception(f"Conversion failed: {str(e)}\nType: {type(e).__name__}\nDetails: {repr(e)}")
 
 def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: int = 6, srs: Optional[str] = None) -> bool:
     """
@@ -581,15 +582,24 @@ def extract_geopdf_metadata(pdf_path: str) -> dict:
     try:
         ds = gdal.Open(pdf_path)
         if ds is None:
-            raise Exception("Could not open PDF file")
+            logger.error(f"extract_geopdf_metadata: Konnte PDF nicht öffnen: {pdf_path}")
+            return {"bbox": None, "srs": None, "layer_info": None, "error": "Could not open PDF file"}
         gt = ds.GetGeoTransform()
         xsize = ds.RasterXSize
         ysize = ds.RasterYSize
+        srs = ds.GetProjectionRef()
+        logger.info(f"extract_geopdf_metadata: gt={gt}, xsize={xsize}, ysize={ysize}, srs={srs}")
+        if not gt or xsize == 0 or ysize == 0:
+            logger.error(f"extract_geopdf_metadata: Ungültige GeoTransform oder Rastergröße: gt={gt}, xsize={xsize}, ysize={ysize}")
+            ds = None
+            return {"bbox": None, "srs": None, "layer_info": None, "error": "Invalid GeoTransform or raster size"}
         minx = gt[0]
         maxy = gt[3]
         maxx = minx + gt[1] * xsize
         miny = maxy + gt[5] * ysize
-        srs = ds.GetProjectionRef()
+        if not srs or srs.strip() == "":
+            logger.warning(f"extract_geopdf_metadata: Keine SRS-Information im PDF gefunden: {pdf_path}")
+            srs = None
         ds = None
         return {
             "bbox": [minx, miny, maxx, maxy],
@@ -598,4 +608,4 @@ def extract_geopdf_metadata(pdf_path: str) -> dict:
         }
     except Exception as e:
         logger.error(f"extract_geopdf_metadata failed: {e}")
-        return {"bbox": None, "srs": None, "layer_info": None}
+        return {"bbox": None, "srs": None, "layer_info": None, "error": str(e)}
