@@ -20,6 +20,7 @@ import ContainerMonitor from './components/ContainerMonitor.jsx';
 import Login from './components/Login';
 import TmsPreviewDialog from './components/TmsPreviewDialog.jsx';
 import FileBrowser from './components/FileBrowser.jsx';
+import WorkflowAutomation from './components/workflow-automation.jsx';
 
 const API = '/api'
 
@@ -1013,7 +1014,7 @@ function App() {
 
         {/* Dialog für TMS-Preview */}
         {showTmsPreviewDialog && tmsPreviewFile && (
-          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
+          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setTmsPreviewDialog(false)} />
         )}
         </main>
       </div>
