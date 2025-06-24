@@ -937,6 +937,55 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Konvertierungs-Dialog */}
+      {showConvertDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold mb-4">Datei konvertieren</h3>
+            <div className="mb-2">
+              <label className="block text-sm font-medium mb-1">Seitenformat</label>
+              <select
+                value={convertParams.pageSize}
+                onChange={e => setConvertParams(p => ({ ...p, pageSize: e.target.value }))}
+                className="w-full border rounded px-2 py-1"
+              >
+                <option value="A0">A0</option>
+                <option value="A1">A1</option>
+                <option value="A2">A2</option>
+                <option value="A3">A3</option>
+                <option value="A4">A4</option>
+                <option value="A5">A5</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">DPI</label>
+              <input
+                type="number"
+                value={convertParams.dpi}
+                min={72}
+                max={1200}
+                onChange={e => setConvertParams(p => ({ ...p, dpi: e.target.value }))}
+                className="w-full border rounded px-2 py-1"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowConvertDialog(false)}
+                className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={() => handleConvert(convertParams.file, convertParams.pageSize, convertParams.dpi)}
+                className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Konvertieren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
