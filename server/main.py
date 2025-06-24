@@ -11,7 +11,7 @@ import math
 import docker
 
 import jwt
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Query, Body
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -605,7 +605,13 @@ async def dxf_to_geopdf_endpoint(file_id: str, user: str = Depends(verify_token)
         raise HTTPException(status_code=500, detail="Conversion failed")
 
 @app.post("/api/tms/{file_id}")
-async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
+async def create_tms_layer(
+    file_id: str,
+    maxzoom: int = 6,
+    user: str = Depends(verify_token),
+    db: sqlite3.Connection = Depends(get_db),
+    body: dict = Body(default=None)
+):
     """GeoPDF zu TMS (Tile Map Service) konvertieren"""
     try:
         cursor = db.cursor()
@@ -616,47 +622,51 @@ async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(v
         geopdf_path = row[2] if row[2].endswith('.pdf') else os.path.join(OUTPUT_DIR, f"{file_id}.pdf")
         if not os.path.exists(geopdf_path):
             raise HTTPException(status_code=404, detail="GeoPDF file missing on disk")
-        
-        # SRS aus der Datenbank holen (gespeichert während der Konvertierung)
+        # SRS und Bounds aus Request übernehmen, falls vorhanden
         file_srs = row[11] if len(row) > 11 else None
+        if body and 'srs' in body and body['srs']:
+            file_srs = body['srs']
         if not file_srs or file_srs.strip() == '' or file_srs.lower() == 'none':
             file_srs = 'EPSG:3857'  # Fallback-SRS
             logger.warning(f"Kein SRS gefunden, setze Fallback SRS '{file_srs}' für TMS-Generierung von {file_id}")
         else:
             logger.info(f"Verwende SRS '{file_srs}' für TMS-Generierung von {file_id}")
-
         tms_dir = os.path.join(STATIC_ROOT, file_id)
-        convert_pdf_to_tms(geopdf_path, tms_dir, minzoom=0, maxzoom=maxzoom, srs=file_srs)
-
+        # Bounds ggf. an convert_pdf_to_tms übergeben (optional, falls Funktion unterstützt)
+        convert_pdf_to_tms(geopdf_path, tms_dir, minzoom=0, maxzoom=body['maxzoom'] if body and 'maxzoom' in body else maxzoom, srs=file_srs)
         # --- Bounding Box und SRS aus GeoPDF extrahieren und in config.json schreiben ---
         try:
-            ds = gdal.Open(geopdf_path)
-            if ds is not None:
-                gt = ds.GetGeoTransform()
-                xsize = ds.RasterXSize
-                ysize = ds.RasterYSize
-                minx = gt[0]
-                maxy = gt[3]
-                maxx = minx + gt[1] * xsize
-                miny = maxy + gt[5] * ysize
-                srs = ds.GetProjectionRef() or file_srs
-                ds = None
-                bounds = [minx, miny, maxx, maxy]
-                config_path = os.path.join(tms_dir, "config.json")
-                config = {}
-                if os.path.exists(config_path):
-                    with open(config_path) as f:
-                        config = json.load(f)
+            config_path = os.path.join(tms_dir, "config.json")
+            config = {}
+            if os.path.exists(config_path):
+                with open(config_path) as f:
+                    config = json.load(f)
+            # Bounds aus Request übernehmen, falls vorhanden
+            if body and 'bounds' in body and isinstance(body['bounds'], list) and len(body['bounds']) == 4:
+                bounds = [float(x) for x in body['bounds']]
                 config["bounds"] = bounds
-                config["srs"] = srs
-                with open(config_path, "w") as f:
-                    json.dump(config, f, indent=2)
-                logger.info(f"TMS config.json mit Bounds und SRS aktualisiert: {config_path}")
+                logger.info(f"Bounds aus Request übernommen: {bounds}")
             else:
-                logger.warning(f"Konnte GeoPDF nicht öffnen für Bounding Box: {geopdf_path}")
+                # Bounds aus PDF extrahieren
+                ds = gdal.Open(geopdf_path)
+                if ds is not None:
+                    gt = ds.GetGeoTransform()
+                    xsize = ds.RasterXSize
+                    ysize = ds.RasterYSize
+                    minx = gt[0]
+                    maxy = gt[3]
+                    maxx = minx + gt[1] * xsize
+                    miny = maxy + gt[5] * ysize
+                    bounds = [minx, miny, maxx, maxy]
+                    config["bounds"] = bounds
+                    logger.info(f"Bounds aus PDF extrahiert: {bounds}")
+                    ds = None
+            config["srs"] = file_srs
+            with open(config_path, "w") as f:
+                json.dump(config, f, indent=2)
+            logger.info(f"TMS config.json mit Bounds und SRS aktualisiert: {config_path}")
         except Exception as e:
             logger.error(f"Fehler beim Extrahieren der Bounding Box aus GeoPDF: {e}")
-
         return {"message": "TMS erfolgreich erzeugt", "tms_dir": tms_dir, "url": f"/static/{file_id}"}
     except Exception as e:
         logger.error(f"TMS-Erstellung fehlgeschlagen: {e}")

@@ -48,7 +48,7 @@ function App() {
 
   // State für TMS-Dialog
   const [showTmsDialog, setShowTmsDialog] = useState(false);
-  const [tmsParams, setTmsParams] = useState({ file: null, maxzoom: 20 });
+  const [tmsParams, setTmsParams] = useState({ file: null, maxzoom: 20, srs: 'EPSG:3857', bounds: ['', '', '', ''] });
 
   // State für TMS-Preview-Dialog
   const [showTmsPreviewDialog, setShowTmsPreviewDialog] = useState(false);
@@ -66,20 +66,30 @@ function App() {
 
   // Handler für TMS-Dialog öffnen
   const handleOpenTmsDialog = (file) => {
-    setTmsParams({ file, maxzoom: 20 });
+    // Versuche SRS und Bounds aus dem File zu übernehmen, falls vorhanden
+    let srs = 'EPSG:3857';
+    let bounds = ['', '', '', ''];
+    if (file.srs && typeof file.srs === 'string') srs = file.srs;
+    if (file.bbox && Array.isArray(file.bbox) && file.bbox.length === 4) bounds = file.bbox;
+    if (file.config && file.config.srs) srs = file.config.srs;
+    if (file.config && file.config.bounds && Array.isArray(file.config.bounds) && file.config.bounds.length === 4) bounds = file.config.bounds;
+    setTmsParams({ file, maxzoom: 20, srs, bounds });
     setShowTmsDialog(true);
   };
 
   // Handler für TMS-Erstellung
-  const handleCreateTms = async (file, maxzoom = 20) => {
+  const handleCreateTms = async (file, maxzoom = 20, srs, bounds) => {
     setShowTmsDialog(false);
     setCreatingTms(prev => new Set([...prev, file.id])); // Start loading
     try {
-      const response = await fetch(`${API}/tms/${file.id}?maxzoom=${maxzoom}`, {
+      const body = JSON.stringify({ srs, bounds: bounds.map(Number), maxzoom: Number(maxzoom) });
+      const response = await fetch(`${API}/tms/${file.id}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
+        body,
       });
       if (response.ok) {
         addMessage(`TMS für ${file.name} erfolgreich erzeugt`, 'success');
@@ -757,273 +767,4 @@ function App() {
                                           try {
                                             const response = await fetch(`${API}/maptiler/${file.id}`, {
                                               method: 'POST',
-                                              headers: {
-                                                'Authorization': `Bearer ${token}`,
-                                              },
-                                            });
-                                            if (response.ok) {
-                                              addMessage(`MapTiler-Job für ${file.name} gestartet`, 'success');
-                                            } else {
-                                              const err = await response.json();
-                                              addMessage(`MapTiler-Fehler: ${err.detail || 'Unbekannter Fehler'}`, 'error');
-                                            }
-                                          } catch (error) {
-                                            addMessage('Fehler beim Starten des MapTiler-Jobs', 'error');
-                                            console.error('MapTiler-Fehler:', error);
-                                          }
-                                        }}
-                                        className="inline-flex items-center gap-1 px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-md transition-colors"
-                                      >
-                                        <Layers className="w-3 h-3" />
-                                        MapTiler starten
-                                      </button>
-                                    </div>
-                                  )}
-                                  <button 
-                                    onClick={() => handleDelete(file.id)}
-                                    className="inline-flex items-center gap-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                    Löschen
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* PDF-Vorschauen (Blobs) */}
-              {previewBlobs.length > 0 && (
-                <div className="bg-white rounded-lg shadow-sm border mt-6 p-4">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">PDF-Vorschauen (Blobs)</h3>
-                  <ul className="space-y-2">
-                    {previewBlobs.map(blob => (
-                      <li key={blob.fileId} className="flex items-center gap-3">
-                        <span className="flex-1 truncate">{blob.fileName}</span>
-                        <a
-                          href={blob.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
-                        >
-                          Vorschau öffnen
-                        </a>
-                        <button
-                          onClick={() => removePreviewBlob(blob.fileId)}
-                          className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
-                        >
-                          Entfernen
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {page === 'filebrowser' && (
-            <FileBrowser token={token} onMessage={addMessage} />
-          )}
-          {page === 'map' && (
-            <div className="h-full">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Kartenansicht ({tmsLayers.length} TMS Layer)</h2>
-                <p className="text-gray-600">Konvertierte TMS-Layer auf der Karte anzeigen</p>
-              </div>
-              {/* Verwendung der Map.jsx Komponente */}
-              <div className="h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border overflow-hidden">
-                <Map tmsLayers={tmsLayers} />
-              </div>
-            </div>
-          )}
-
-          {page === 'n8n' && (
-            <div className="h-full">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">n8n Workflow</h2>
-                <p className="text-gray-600">Interaktive Workflows anzeigen</p>
-              </div>
-              <div className="h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border overflow-hidden">
-                <iframe src="/n8n/" className="w-full h-full border-none"></iframe>
-              </div>
-            </div>
-          )}
-          {page === 'service-task-manager' && (
-            // ServiceTaskManager müsste aktualisiert werden, um dieses 'services'-Prop zu verwenden
-            <ServiceTaskManager services={dockerServicesData} />
-          )}
-
-          {page === 'container-monitor' && (
-            <div className="h-full">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Container & System Monitor</h2>
-                <p className="text-gray-600">Docker Container und Host-System-Überwachung</p>
-              </div>
-              <ContainerMonitor
-                containers={dockerContainers}
-                images={dockerImages}
-                volumes={dockerVolumes}
-                token={token}  // Wichtig: Token für System-API-Aufrufe
-                onViewLogs={async (containerId, containerName) => {
-                  try {
-                    const response = await fetch(`${API}/containers/${containerId}/logs?lines=200`, {
-                      headers: {
-                        'Authorization': `Bearer ${token}`,
-                      },
-                    });
-                    
-                    if (response.ok) {
-                      const data = await response.json();
-                      return data.logs;
-                    } else {
-                      throw new Error(`HTTP ${response.status}`);
-                    }
-                  } catch (error) {
-                    console.error('Error fetching container logs:', error);
-                    // Fallback auf Demo-Logs
-                    return [
-                      `${new Date().toISOString()} [ERROR] Failed to fetch real logs: ${error.message}`,
-                      `${new Date().toISOString()} [INFO] Showing demo logs instead`,
-                      `${new Date().toISOString()} [INFO] Container ${containerName} - Demo log entry`,
-                      `${new Date().toISOString()} [WARN] Please check API connectivity`,
-                    ];
-                  }
-                }}
-              />
-            </div>
-          )}
-
-          {page === 'api-docs' && (
-            <div className="h-full">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">OpenAPI Spezifikation</h2>
-                <p className="text-gray-600">Swagger UI der Backend-API</p>
-              </div>
-              <div className="h-[calc(100vh-200px)] bg-white rounded-lg shadow-sm border overflow-hidden">
-                <iframe src="/api/docs" title="OpenAPI" className="w-full h-full border-none" />
-              </div>
-            </div>
-          )}
-          
-        {/* Blobstore-Modal */}
-        {showBlobstore && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl mx-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-900">Blobstore: PDF-Vorschauen</h2>
-                <button onClick={() => setShowBlobstore(false)} className="p-1 text-gray-500 hover:text-gray-700">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              {previewBlobs.length === 0 ? (
-                <div className="text-gray-500">Keine Blobs vorhanden.</div>
-              ) : (
-                <ul className="space-y-3">
-                  {previewBlobs.map(blob => (
-                    <li key={blob.fileId} className="flex items-center gap-3 border-b pb-2">
-                      <span className="flex-1 truncate">{blob.fileName}</span>
-                      <a
-                        href={blob.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors"
-                      >
-                        Vorschau öffnen
-                      </a>
-                      <button
-                        onClick={() => removePreviewBlob(blob.fileId)}
-                        className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
-                      >
-                        Entfernen
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Dialog für Konvertierungsparameter */}
-        {showConvertDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-80">
-              <h2 className="text-lg font-bold mb-4">Konvertierungsoptionen</h2>
-              <div className="mb-3">
-                <label className="block text-sm font-medium">Seitengröße</label>
-                <select
-                  className="w-full border rounded px-2 py-1"
-                  value={convertParams.pageSize}
-                  onChange={e => setConvertParams(p => ({ ...p, pageSize: e.target.value }))}
-                >
-                  <option value="A0">A0</option>
-                  <option value="A1">A1</option>
-                  <option value="A2">A2</option>
-                  <option value="A3">A3</option>
-                  <option value="A4">A4</option>
-                  <option value="A5">A5</option>
-                </select>
-              </div>
-              <div className="mb-3">
-                <label className="block text-sm font-medium">DPI</label>
-                <input
-                  type="number"
-                  min="72"
-                  max="1200"
-                  className="w-full border rounded px-2 py-1"
-                  value={convertParams.dpi}
-                  onChange={e => setConvertParams(p => ({ ...p, dpi: e.target.value }))}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setShowConvertDialog(false)}>Abbrechen</button>
-                <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={() => handleConvert(convertParams.file, convertParams.pageSize, convertParams.dpi)}>Konvertieren</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Dialog für TMS-Optionen */}
-        {showTmsDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-80">
-              <h2 className="text-lg font-bold mb-4">TMS-Optionen</h2>
-              <div className="mb-3">
-                <label className="block text-sm font-medium">Maximale Zoomstufe</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="22"
-                  className="w-full border rounded px-2 py-1"
-                  value={tmsParams.maxzoom}
-                  onChange={e => setTmsParams(p => ({ ...p, maxzoom: e.target.value }))}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setShowTmsDialog(false)}>Abbrechen</button>
-                <button className="px-3 py-1 bg-yellow-600 text-white rounded" onClick={() => handleCreateTms(tmsParams.file, tmsParams.maxzoom)}>TMS erzeugen</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Dialog für TMS-Preview */}
-        {showTmsPreviewDialog && tmsPreviewFile && (
-          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
-        )}
-        {page === 'workflow-automation' && (
-            <WorkflowAutomation token={token} />
-          )}
-        </main>
-      </div>
-    </div>
-  );
-}
-
-export default App
+                                              headers:
