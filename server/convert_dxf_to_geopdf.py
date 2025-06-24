@@ -496,7 +496,6 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
         # Metadaten falls gewünscht
         if return_metadata:
             metadata = extract_geopdf_metadata(pdf_path)
-        
         return metadata
         
     except Exception as e:
@@ -569,3 +568,34 @@ def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: i
     except Exception as e:
         logger.error(f"TMS-Konvertierung fehlgeschlagen: {e}")
         raise
+
+def extract_geopdf_metadata(pdf_path: str) -> dict:
+    """
+    Extrahiert Bounding Box und SRS aus einem GeoPDF mittels GDAL.
+    Args:
+        pdf_path: Pfad zum GeoPDF
+    Returns:
+        dict: {bbox: [minx, miny, maxx, maxy], srs: str, layer_info: None}
+    """
+    from osgeo import gdal
+    try:
+        ds = gdal.Open(pdf_path)
+        if ds is None:
+            raise Exception("Could not open PDF file")
+        gt = ds.GetGeoTransform()
+        xsize = ds.RasterXSize
+        ysize = ds.RasterYSize
+        minx = gt[0]
+        maxy = gt[3]
+        maxx = minx + gt[1] * xsize
+        miny = maxy + gt[5] * ysize
+        srs = ds.GetProjectionRef()
+        ds = None
+        return {
+            "bbox": [minx, miny, maxx, maxy],
+            "srs": srs,
+            "layer_info": None
+        }
+    except Exception as e:
+        logger.error(f"extract_geopdf_metadata failed: {e}")
+        return {"bbox": None, "srs": None, "layer_info": None}
