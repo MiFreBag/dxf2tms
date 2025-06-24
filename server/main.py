@@ -627,6 +627,36 @@ async def create_tms_layer(file_id: str, maxzoom: int = 6, user: str = Depends(v
 
         tms_dir = os.path.join(STATIC_ROOT, file_id)
         convert_pdf_to_tms(geopdf_path, tms_dir, minzoom=0, maxzoom=maxzoom, srs=file_srs)
+
+        # --- Bounding Box und SRS aus GeoPDF extrahieren und in config.json schreiben ---
+        try:
+            ds = gdal.Open(geopdf_path)
+            if ds is not None:
+                gt = ds.GetGeoTransform()
+                xsize = ds.RasterXSize
+                ysize = ds.RasterYSize
+                minx = gt[0]
+                maxy = gt[3]
+                maxx = minx + gt[1] * xsize
+                miny = maxy + gt[5] * ysize
+                srs = ds.GetProjectionRef() or file_srs
+                ds = None
+                bounds = [minx, miny, maxx, maxy]
+                config_path = os.path.join(tms_dir, "config.json")
+                config = {}
+                if os.path.exists(config_path):
+                    with open(config_path) as f:
+                        config = json.load(f)
+                config["bounds"] = bounds
+                config["srs"] = srs
+                with open(config_path, "w") as f:
+                    json.dump(config, f, indent=2)
+                logger.info(f"TMS config.json mit Bounds und SRS aktualisiert: {config_path}")
+            else:
+                logger.warning(f"Konnte GeoPDF nicht öffnen für Bounding Box: {geopdf_path}")
+        except Exception as e:
+            logger.error(f"Fehler beim Extrahieren der Bounding Box aus GeoPDF: {e}")
+
         return {"message": "TMS erfolgreich erzeugt", "tms_dir": tms_dir, "url": f"/static/{file_id}"}
     except Exception as e:
         logger.error(f"TMS-Erstellung fehlgeschlagen: {e}")
