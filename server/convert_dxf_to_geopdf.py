@@ -580,6 +580,14 @@ def extract_geopdf_metadata(pdf_path: str) -> dict:
     """
     from osgeo import gdal
     try:
+        gdal.AllRegister()  # Alle Treiber explizit registrieren
+        # Debug: Liste der verfügbaren Treiber loggen
+        driver_count = gdal.GetDriverCount()
+        drivers = [gdal.GetDriver(i).ShortName for i in range(driver_count)]
+        logger.info(f"extract_geopdf_metadata: Verfügbare GDAL-Treiber: {drivers}")
+        if "PDF" not in drivers:
+            logger.error("extract_geopdf_metadata: GDAL-PDF-Treiber nicht verfügbar! Bitte GDAL mit PDF-Support installieren.")
+            return {"bbox": None, "srs": None, "layer_info": None, "error": "GDAL PDF driver not available"}
         ds = gdal.Open(pdf_path)
         if ds is None:
             logger.error(f"extract_geopdf_metadata: Konnte PDF nicht öffnen: {pdf_path}")
