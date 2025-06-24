@@ -7,6 +7,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import shutil
+import math
+import docker
 
 import jwt
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Query
@@ -717,12 +719,23 @@ async def delete_file(file_id: str, user: str = Depends(verify_token), db: sqlit
         cursor.execute("SELECT path FROM files WHERE id = ?", (file_id,))
         row = cursor.fetchone()
         if not row:
+            logger.warning(f"Löschversuch für nicht vorhandene Datei-ID: {file_id}")
             raise HTTPException(status_code=404, detail="File not found")
         file_path = row[0]
         logger.info(f"Attempting to delete file: {file_path}")
         if os.path.exists(file_path):
-            os.remove(file_path)
-            logger.info(f"Successfully deleted file: {file_path}")
+            try:
+                os.remove(file_path)
+                logger.info(f"Successfully deleted file: {file_path}")
+            except Exception as e:
+                logger.error(f"Fehler beim Löschen der Datei {file_path}: {e}")
+                raise HTTPException(status_code=500, detail=f"Fehler beim Löschen der Datei: {e}")
+            # Nach dem Löschversuch prüfen, ob die Datei wirklich weg ist
+            if os.path.exists(file_path):
+                logger.error(f"Datei existiert nach Löschversuch immer noch: {file_path}")
+                raise HTTPException(status_code=500, detail="Datei konnte nicht gelöscht werden (existiert noch)")
+        else:
+            logger.warning(f"Datei nicht auf dem Dateisystem gefunden: {file_path}")
         cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
         db.commit()
         return {"message": "Datei erfolgreich gelöscht"}
