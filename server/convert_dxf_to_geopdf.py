@@ -396,7 +396,7 @@ def validate_page_size(page_size: str) -> tuple:
         logger.warning(f"Unsupported page size: {page_size}")
         return None
 
-# Verbesserte Hauptfunktion mit Seitengrößen-Validierung
+# Verbesserte Hauptfunktion mit Seitgrößen-Validierung
 def dxf_to_geopdf(dxf_path: str, pdf_path: str,
                  crs_epsg: Optional[int] = 3857,
                  page_size: str = "A4",
@@ -479,3 +479,70 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
     except Exception as e:
         logger.error(f"DXF to GeoPDF conversion failed: {e}")
         raise Exception(f"Conversion failed: {str(e)}")
+
+def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: int = 6, srs: Optional[str] = None) -> bool:
+    """
+    Konvertiert ein GeoPDF oder Raster (TIF/TIFF) in einen TMS-Ordner (Tiles) mit gdal2tiles.
+    Für Rasterdaten oder PDFs ohne Georeferenz wird -p raster verwendet.
+    """
+    import subprocess
+    import re
+    try:
+        if not os.path.exists(tms_dir):
+            os.makedirs(tms_dir)
+
+        # Finde gdal2tiles.py im PATH
+        gdal2tiles_executable = shutil.which('gdal2tiles.py')
+        if not gdal2tiles_executable:
+            logger.error("'gdal2tiles.py' nicht im Systempfad (PATH) gefunden.")
+            raise FileNotFoundError("[Errno 2] No such file or directory: 'gdal2tiles.py'")
+
+        # Dateityp prüfen
+        ext = os.path.splitext(pdf_path)[1].lower()
+        is_raster = ext in ['.tif', '.tiff']
+        needs_raster_profile = False
+
+        # Prüfe auf Georeferenz (für PDFs)
+        if not is_raster:
+            try:
+                from osgeo import gdal
+                ds = gdal.Open(pdf_path)
+                has_georef = False
+                if ds is not None:
+                    gt = ds.GetGeoTransform()
+                    proj = ds.GetProjectionRef()
+                    if gt and proj:
+                        has_georef = True
+                    ds = None
+                if not has_georef:
+                    needs_raster_profile = True
+                    logger.warning(f"Keine Georeferenz im PDF gefunden, setze -p raster für {pdf_path}")
+            except Exception as e:
+                needs_raster_profile = True
+                logger.warning(f"Fehler beim Prüfen der Georeferenz: {e}. Setze -p raster für {pdf_path}")
+        else:
+            needs_raster_profile = True
+            logger.info(f"Rasterdatei erkannt ({pdf_path}), setze -p raster")
+
+        cmd = [
+            gdal2tiles_executable,
+            '-z', f'{minzoom}-{maxzoom}',
+            '-r', 'bilinear',
+            '-w', 'none',
+        ]
+        if needs_raster_profile:
+            cmd.extend(['-p', 'raster'])
+        if srs:
+            cmd.extend(["--s_srs", srs])
+        cmd.extend([pdf_path, tms_dir])
+        logger.info(f"Starte gdal2tiles: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            error_output = result.stderr or result.stdout
+            logger.error(f"gdal2tiles Fehler (Return Code: {result.returncode}): {error_output}")
+            raise Exception(f"gdal2tiles failed (Return Code: {result.returncode}): {error_output}")
+        logger.info(f"TMS erfolgreich erzeugt: {tms_dir}")
+        return True
+    except Exception as e:
+        logger.error(f"TMS-Konvertierung fehlgeschlagen: {e}")
+        raise
