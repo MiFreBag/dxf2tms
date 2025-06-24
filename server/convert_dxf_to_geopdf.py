@@ -350,6 +350,29 @@ class DXFToGeoPDFConverter:
         except Exception as e:
             logger.warning(f"Failed to add some layout elements: {e}")
 
+    def export_to_pdf(self, layout, pdf_path, dpi=300, georeference=True):
+        """
+        Exportiert das gegebene Layout als (Geo)PDF.
+        Args:
+            layout: QgsPrintLayout-Objekt
+            pdf_path: Zielpfad für das PDF
+            dpi: Auflösung
+            georeference: GeoPDF-Export aktivieren
+        """
+        try:
+            exporter = QgsLayoutExporter(layout)
+            pdf_settings = QgsLayoutExporter.PdfExportSettings()
+            pdf_settings.dpi = dpi
+            pdf_settings.rasterizeWholeImage = False
+            pdf_settings.exportMetadata = georeference
+            result = exporter.exportToPdf(pdf_path, pdf_settings)
+            if result != QgsLayoutExporter.Success:
+                raise Exception(f"PDF-Export fehlgeschlagen: {result}")
+            logger.info(f"PDF erfolgreich exportiert: {pdf_path}")
+        except Exception as e:
+            logger.error(f"Fehler beim PDF-Export: {e}")
+            raise
+
 # Zusätzliche Hilfsfunktion für Seitengrößen-Validierung
 def get_supported_page_sizes():
     """
