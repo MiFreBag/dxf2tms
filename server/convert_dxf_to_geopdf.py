@@ -176,157 +176,270 @@ class DXFToGeoPDFConverter:
             logger.error(f"Failed to apply symbolization: {e}")
             raise
     
-    def create_print_layout(self, layer: QgsVectorLayer, 
-                          layout_name: str = "DXF_Layout",
-                          page_size: str = "A4",
-                          add_elements: bool = True) -> QgsPrintLayout:
-        """
-        Print Layout immer als A4 quer (Landscape) erstellen
-        """
-        try:
-            layout = QgsPrintLayout(self.project)
-            layout.initializeDefaults()
-            layout.setName(layout_name)
-            self.project.layoutManager().addLayout(layout)
-            map_item = QgsLayoutItemMap(layout)
-            # Immer A4 quer
-            page_width, page_height = 297, 210  # mm (A4 Landscape)
+  def create_print_layout(self, layer: QgsVectorLayer, 
+                      layout_name: str = "DXF_Layout",
+                      page_size: str = "A4",
+                      add_elements: bool = True) -> QgsPrintLayout:
+    """
+    Print Layout erstellen mit korrekter Seitengröße-Unterstützung
+    
+    Args:
+        layer: Der Hauptlayer für die Karte
+        layout_name: Name des Layouts
+        page_size: Seitengröße (A4, A3, A2, A1, A0, A5)
+        add_elements: Zusätzliche Kartenelemente hinzufügen
+        
+    Returns:
+        QgsPrintLayout: Erstelltes Layout
+    """
+    try:
+        # Layout erstellen
+        layout = QgsPrintLayout(self.project)
+        layout.initializeDefaults()
+        layout.setName(layout_name)
+        self.project.layoutManager().addLayout(layout)
+
+        # Kartenelement erstellen
+        map_item = QgsLayoutItemMap(layout)
+
+        # *** KORRIGIERT: Dynamische Seitengröße basierend auf page_size Parameter ***
+        page_size_upper = page_size.upper()
+        
+        # Seitengröße und Ränder bestimmen (Hochformat als Basis)
+        if page_size_upper == "A0":
+            page_width, page_height = 841, 1189  # mm
+            map_margins = 25
+        elif page_size_upper == "A1":
+            page_width, page_height = 594, 841   # mm
+            map_margins = 20
+        elif page_size_upper == "A2":
+            page_width, page_height = 420, 594   # mm
+            map_margins = 20
+        elif page_size_upper == "A3":
+            page_width, page_height = 297, 420   # mm
+            map_margins = 15
+        elif page_size_upper == "A4":
+            page_width, page_height = 210, 297   # mm
             map_margins = 10
-            map_width = page_width - (2 * map_margins)
-            map_height = page_height - (2 * map_margins) - (20 if add_elements else 0)
-            map_item.attemptMove(QgsLayoutPoint(map_margins, map_margins + (20 if add_elements else 0)))
-            map_item.attemptResize(QgsLayoutSize(map_width, map_height, QgsUnitTypes.LayoutMillimeters))
-            # --- NEU: CRS explizit auf das Kartenelement setzen ---
-            map_item.setCrs(layer.crs())
-            # Layer-Extent auf Karte setzen
-            map_item.setExtent(layer.extent())
-            layout.addLayoutItem(map_item)
-            if add_elements:
-                self._add_layout_elements(layout, map_item, layer, page_width)
-            logger.info(f"Print layout created: {layout_name} (A4 quer)")
-            return layout
-        except Exception as e:
-            logger.error(f"Failed to create print layout: {e}")
-            raise
-    
-    def _add_layout_elements(self, layout: QgsPrintLayout, map_item: QgsLayoutItemMap, 
-                           layer: QgsVectorLayer, page_width: float):
-        """
-        Zusätzliche Layout-Elemente hinzufügen (Titel, Maßstab, etc.)
+        elif page_size_upper == "A5":
+            page_width, page_height = 148, 210   # mm
+            map_margins = 8
+        else:
+            # Default fallback auf A4
+            page_width, page_height = 210, 297   # mm
+            map_margins = 10
+            logger.warning(f"Unbekannte Seitengröße '{page_size}', verwende A4 als Fallback")
+
+        # *** WICHTIG: Immer Querformat verwenden (Landscape) ***
+        # Für bessere Darstellung von technischen Plänen
+        if page_width < page_height:
+            page_width, page_height = page_height, page_width
         
-        Args:
-            layout: Das Layout
-            map_item: Das Kartenelement
-            layer: Der Hauptlayer
-            page_width: Seitenbreite in mm
-        """
-        try:
-            # Titel hinzufügen
-            title_item = QgsLayoutItemLabel(layout)
-            title_item.setText(f"DXF-Karte: {layer.name()}")
-            title_item.setFont(QFont("Arial", 14, QFont.Bold))
-            title_item.attemptMove(QgsLayoutPoint(10, 5))
-            title_item.attemptResize(QgsLayoutSize(page_width - 20, 15, QgsUnitTypes.LayoutMillimeters))
-            layout.addLayoutItem(title_item)
+        logger.info(f"Layout-Seitengröße: {page_size_upper} Querformat ({page_width}x{page_height} mm)")
 
-            # Bounding Box und SRS als Text einblenden
-            extent = layer.extent()
-            bbox_text = f"BBox: [{extent.xMinimum():.2f}, {extent.yMinimum():.2f}, {extent.xMaximum():.2f}, {extent.yMaximum():.2f}]"
-            srs_text = f"SRS: {layer.crs().authid()}"
-            info_text = f"{bbox_text} | {srs_text}"
-            info_item = QgsLayoutItemLabel(layout)
-            info_item.setText(info_text)
-            info_item.setFont(QFont("Arial", 10))
-            info_item.attemptMove(QgsLayoutPoint(10, 20))
-            info_item.attemptResize(QgsLayoutSize(page_width - 20, 10, QgsUnitTypes.LayoutMillimeters))
-            layout.addLayoutItem(info_item)
+        # Seitenformat im Layout setzen
+        page_collection = layout.pageCollection()
+        if page_collection.pageCount() > 0:
+            page = page_collection.page(0)
+            page.setPageSize(QgsLayoutSize(page_width, page_height, QgsUnitTypes.LayoutMillimeters))
 
-            # Maßstabsleiste hinzufügen
-            scalebar_item = QgsLayoutItemScaleBar(layout)
-            scalebar_item.setLinkedMap(map_item)
-            scalebar_item.setStyle('Single Box')
-            scalebar_item.setUnits(QgsUnitTypes.DistanceMeters)
-            scalebar_item.setNumberOfSegments(4)
-            scalebar_item.setNumberOfSegmentsLeft(0)
-            scalebar_item.attemptMove(QgsLayoutPoint(10, 280))
-            scalebar_item.attemptResize(QgsLayoutSize(60, 10, QgsUnitTypes.LayoutMillimeters))
-            layout.addLayoutItem(scalebar_item)
-            
-            logger.info("Layout elements (Titel, BBox, SRS) added successfully")
-        except Exception as e:
-            logger.warning(f"Failed to add some layout elements: {e}")
-    
-    def export_to_pdf(self, layout: QgsPrintLayout, pdf_path: str, 
-                     dpi: int = 300, georeference: bool = True) -> bool:
-        """
-        Layout als GeoPDF exportieren
+        # Kartenbereich definieren
+        title_space = 20 if add_elements else 0
+        map_width = page_width - (2 * map_margins)
+        map_height = page_height - (2 * map_margins) - title_space
+
+        # Karte positionieren und dimensionieren
+        map_item.attemptMove(QgsLayoutPoint(map_margins, map_margins + title_space))
+        map_item.attemptResize(QgsLayoutSize(map_width, map_height, QgsUnitTypes.LayoutMillimeters))
+
+        # Layer-Extent auf Karte setzen
+        extent = layer.extent()
+        if extent.isEmpty():
+            logger.warning("Layer extent ist leer!")
+            # Fallback-Extent setzen
+            extent.set(-1000, -1000, 1000, 1000)
+        else:
+            # Kleinen Buffer hinzufügen für bessere Darstellung
+            buffer = max(extent.width(), extent.height()) * 0.05
+            extent.setXMinimum(extent.xMinimum() - buffer)
+            extent.setYMinimum(extent.yMinimum() - buffer)
+            extent.setXMaximum(extent.xMaximum() + buffer)
+            extent.setYMaximum(extent.yMaximum() + buffer)
         
-        Args:
-            layout: Das zu exportierende Layout
-            pdf_path: Ausgabepfad für das PDF
-            dpi: Auflösung für den Export
-            georeference: Georeferenzierung aktivieren
-            
-        Returns:
-            bool: True bei erfolgreichem Export
-        """
-        try:
-            # Ausgabeverzeichnis erstellen falls nicht vorhanden
-            output_dir = os.path.dirname(pdf_path)
-            if output_dir and not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-            
-            # Export-Einstellungen konfigurieren
-            exporter = QgsLayoutExporter(layout)
-            export_settings = QgsLayoutExporter.PdfExportSettings()
-            export_settings.dpi = dpi
-            export_settings.georeference = georeference
-            export_settings.rasterizeWholeImage = False
-            export_settings.forceVectorOutput = True
-            # --- Optional: Metadaten-Export aktivieren, falls verfügbar ---
-            if hasattr(export_settings, 'exportMetadata'):
-                export_settings.exportMetadata = True
-            # PDF exportieren
-            result = exporter.exportToPdf(pdf_path, export_settings)
-            
-            if result != QgsLayoutExporter.Success:
-                raise Exception(f"PDF export failed with code: {result}")
-            
-            # Erfolgsprüfung
-            if not os.path.exists(pdf_path):
-                raise Exception("PDF file was not created")
-            
-            file_size = os.path.getsize(pdf_path)
-            if file_size == 0:
-                raise Exception("PDF file is empty")
-            
-            logger.info(f"PDF export successful: {pdf_path} ({file_size} bytes)")
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"PDF export failed: {e}")
-            raise
+        map_item.setExtent(extent)
+        
+        # Karte zum Layout hinzufügen
+        layout.addLayoutItem(map_item)
 
+        if add_elements:
+            self._add_layout_elements(layout, map_item, layer, page_width, page_height)
+
+        logger.info(f"Print layout created: {layout_name} ({page_size_upper} Querformat)")
+        
+        return layout
+        
+    except Exception as e:
+        logger.error(f"Failed to create print layout: {e}")
+        raise
+
+def _add_layout_elements(self, layout: QgsPrintLayout, map_item: QgsLayoutItemMap, 
+                       layer: QgsVectorLayer, page_width: float, page_height: float):
+    """
+    Zusätzliche Layout-Elemente hinzufügen (Titel, Maßstab, etc.)
+    Angepasst für verschiedene Seitengrößen
+    
+    Args:
+        layout: Das Layout
+        map_item: Das Kartenelement
+        layer: Der Hauptlayer
+        page_width: Seitenbreite in mm
+        page_height: Seitenhöhe in mm
+    """
+    try:
+        # Schriftgrößen basierend auf Seitengröße anpassen
+        if page_width >= 800:  # A0/A1
+            title_font_size = 18
+            info_font_size = 12
+        elif page_width >= 400:  # A2/A3
+            title_font_size = 16
+            info_font_size = 11
+        else:  # A4/A5
+            title_font_size = 14
+            info_font_size = 10
+
+        # Titel hinzufügen
+        title_item = QgsLayoutItemLabel(layout)
+        title_item.setText(f"DXF-Karte: {layer.name()}")
+        title_item.setFont(QFont("Arial", title_font_size, QFont.Bold))
+        title_item.attemptMove(QgsLayoutPoint(10, 5))
+        title_item.attemptResize(QgsLayoutSize(page_width - 20, 15, QgsUnitTypes.LayoutMillimeters))
+        layout.addLayoutItem(title_item)
+
+        # Bounding Box und SRS als Text einblenden
+        extent = layer.extent()
+        bbox_text = f"BBox: [{extent.xMinimum():.2f}, {extent.yMinimum():.2f}, {extent.xMaximum():.2f}, {extent.yMaximum():.2f}]"
+        srs_text = f"SRS: {layer.crs().authid()}"
+        format_text = f"Format: {page_width:.0f}x{page_height:.0f}mm"
+        info_text = f"{bbox_text} | {srs_text} | {format_text}"
+        
+        info_item = QgsLayoutItemLabel(layout)
+        info_item.setText(info_text)
+        info_item.setFont(QFont("Arial", info_font_size))
+        info_item.attemptMove(QgsLayoutPoint(10, 20))
+        info_item.attemptResize(QgsLayoutSize(page_width - 20, 10, QgsUnitTypes.LayoutMillimeters))
+        layout.addLayoutItem(info_item)
+
+        # Maßstabsleiste hinzufügen (Position angepasst an Seitengröße)
+        scalebar_item = QgsLayoutItemScaleBar(layout)
+        scalebar_item.setLinkedMap(map_item)
+        scalebar_item.setStyle('Single Box')
+        scalebar_item.setUnits(QgsUnitTypes.DistanceMeters)
+        scalebar_item.setNumberOfSegments(4)
+        scalebar_item.setNumberOfSegmentsLeft(0)
+        
+        # Skalierung der Maßstabsleiste basierend auf Seitengröße
+        scalebar_width = min(page_width * 0.2, 80)  # Max 80mm, 20% der Seitenbreite
+        scalebar_y = page_height - 25  # 25mm vom unteren Rand
+        
+        scalebar_item.attemptMove(QgsLayoutPoint(10, scalebar_y))
+        scalebar_item.attemptResize(QgsLayoutSize(scalebar_width, 10, QgsUnitTypes.LayoutMillimeters))
+        layout.addLayoutItem(scalebar_item)
+        
+        logger.info(f"Layout elements added for {page_width:.0f}x{page_height:.0f}mm page")
+        
+    except Exception as e:
+        logger.warning(f"Failed to add some layout elements: {e}")
+
+# Zusätzliche Hilfsfunktion für Seitengrößen-Validierung
+def get_supported_page_sizes():
+    """
+    Gibt eine Liste der unterstützten Seitengrößen zurück
+    
+    Returns:
+        dict: Mapping von Seitengröße zu Dimensionen (width, height) in mm
+    """
+    return {
+        "A0": (841, 1189),
+        "A1": (594, 841),
+        "A2": (420, 594),
+        "A3": (297, 420),
+        "A4": (210, 297),
+        "A5": (148, 210)
+    }
+
+def validate_page_size(page_size: str) -> tuple:
+    """
+    Validiert eine Seitengröße und gibt die Dimensionen zurück
+    
+    Args:
+        page_size: Seitengröße als String (z.B. "A4")
+        
+    Returns:
+        tuple: (width, height, margins) in mm, oder None bei ungültiger Größe
+    """
+    supported_sizes = get_supported_page_sizes()
+    page_size_upper = page_size.upper()
+    
+    if page_size_upper in supported_sizes:
+        width, height = supported_sizes[page_size_upper]
+        
+        # Ränder basierend auf Seitengröße
+        if page_size_upper in ["A0", "A1"]:
+            margins = 25
+        elif page_size_upper in ["A2", "A3"]:
+            margins = 15
+        else:  # A4, A5
+            margins = 10
+            
+        return width, height, margins
+    else:
+        logger.warning(f"Unsupported page size: {page_size}")
+        return None
+
+# Verbesserte Hauptfunktion mit Seitengrößen-Validierung
 def dxf_to_geopdf(dxf_path: str, pdf_path: str,
                  crs_epsg: Optional[int] = 3857,
                  page_size: str = "A4",
                  dpi: int = 300,
                  return_metadata: bool = False) -> dict | None:
     """
-    Hauptfunktion: DXF zu GeoPDF konvertieren (immer A4 quer, GeoPDF)
-    Gibt optional Bounding Box und SRS zurück.
-    Setzt SRS auf EPSG:3857, falls keiner vorhanden ist.
+    Hauptfunktion: DXF zu GeoPDF konvertieren mit korrekter Seitengröße
+    
+    Args:
+        dxf_path: Pfad zur DXF-Eingabedatei
+        pdf_path: Pfad zur PDF-Ausgabedatei  
+        crs_epsg: EPSG-Code für Koordinatensystem (optional)
+        page_size: Seitengröße (A0, A1, A2, A3, A4, A5)
+        dpi: Auflösung für PDF-Export
+        return_metadata: Metadaten zurückgeben
+        
+    Returns:
+        dict: Metadaten wenn return_metadata=True, sonst None
+        
+    Raises:
+        Exception: Bei Fehlern während der Konvertierung
     """
     if not QGIS_AVAILABLE:
         raise ModuleNotFoundError(
             "QGIS Python bindings are required. Install QGIS or run the conversion inside the provided Docker container."
         )
+    
     try:
+        # Seitengröße validieren
+        page_validation = validate_page_size(page_size)
+        if page_validation is None:
+            logger.warning(f"Invalid page size '{page_size}', using A4 as fallback")
+            page_size = "A4"
+        
         logger.info(f"Starting DXF to GeoPDF conversion: {dxf_path} -> {pdf_path}")
+        logger.info(f"Page size: {page_size}, DPI: {dpi}")
+        
         metadata = None
+        
         with DXFToGeoPDFConverter() as converter:
+            # DXF-Layer laden
             layer = converter.load_dxf_layer(dxf_path)
+            
             # SRS prüfen und ggf. setzen
             crs = layer.crs()
             if not crs.isValid() or crs.authid().lower() in ("", "none"):
@@ -343,134 +456,26 @@ def dxf_to_geopdf(dxf_path: str, pdf_path: str,
                     logger.info(f"Set CRS to EPSG:{crs_epsg}")
                 else:
                     logger.warning(f"Invalid EPSG code: {crs_epsg}")
+            
+            # Symbolisierung anwenden (alle Layer im Projekt)
             for layer_id, layer_obj in converter.project.mapLayers().items():
                 if isinstance(layer_obj, QgsVectorLayer):
                     converter.apply_symbolization(layer_obj)
-            # Immer A4 quer
-            layout = converter.create_print_layout(layer, page_size="A4")
+            
+            # *** KORRIGIERT: page_size Parameter wird jetzt korrekt verwendet ***
+            layout = converter.create_print_layout(layer, page_size=page_size)
+            
             # GeoPDF-Export erzwingen
             converter.export_to_pdf(layout, pdf_path, dpi=dpi, georeference=True)
-            logger.info("DXF to GeoPDF conversion completed successfully (A4 quer, GeoPDF)")
-            if return_metadata:
-                # Metadaten aus PDF extrahieren, Fallback auf QGIS-Layer falls PDF nicht lesbar
-                try:
-                    from osgeo import gdal
-                    ds = gdal.Open(pdf_path)
-                    if ds is not None:
-                        gt = ds.GetGeoTransform()
-                        xsize = ds.RasterXSize
-                        ysize = ds.RasterYSize
-                        minx = gt[0]
-                        maxy = gt[3]
-                        maxx = minx + gt[1] * xsize
-                        miny = maxy + gt[5] * ysize
-                        srs = ds.GetProjectionRef()
-                        ds = None
-                        metadata = {
-                            "bbox": [minx, miny, maxx, maxy],
-                            "srs": srs
-                        }
-                    else:
-                        logger.warning("GeoPDF konnte nicht für Metadaten geöffnet werden. Fallback auf QGIS-Layer.")
-                except Exception as e:
-                    logger.warning(f"GDAL-Fehler beim Öffnen des PDFs: {e}. Fallback auf QGIS-Layer.")
-                if metadata is None:
-                    # Fallback: Bounding Box und CRS direkt aus QGIS-Layer
-                    extent = layer.extent()
-                    bbox = [extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum()]
-                    srs = layer.crs().authid() if layer.crs() else None
-                    metadata = {"bbox": bbox, "srs": srs}
+            
+            logger.info(f"DXF to GeoPDF conversion completed successfully ({page_size} format)")
+        
+        # Metadaten falls gewünscht
         if return_metadata:
-            return metadata
-        return None
+            metadata = extract_geopdf_metadata(pdf_path)
+        
+        return metadata
+        
     except Exception as e:
         logger.error(f"DXF to GeoPDF conversion failed: {e}")
         raise Exception(f"Conversion failed: {str(e)}")
-
-# Für Rückwärtskompatibilität
-def convert_dxf_to_geopdf(dxf_path: str, pdf_path: str) -> None:
-    """Legacy-Funktion für Rückwärtskompatibilität"""
-    dxf_to_geopdf(dxf_path, pdf_path)
-
-def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: int = 6, srs: Optional[str] = None) -> bool:
-    """
-    Konvertiert ein GeoPDF oder Raster (TIF/TIFF) in einen TMS-Ordner (Tiles) mit gdal2tiles
-    Für Rasterdaten oder PDFs ohne Georeferenz wird -p raster verwendet.
-    """
-    import subprocess
-    import re
-    try:
-        if not os.path.exists(tms_dir):
-            os.makedirs(tms_dir)
-
-        # Finde gdal2tiles.py im PATH
-        gdal2tiles_executable = shutil.which('gdal2tiles.py')
-        if not gdal2tiles_executable:
-            logger.error("'gdal2tiles.py' nicht im Systempfad (PATH) gefunden.")
-            raise FileNotFoundError("[Errno 2] No such file or directory: 'gdal2tiles.py'")
-
-        # Dateityp prüfen
-        ext = os.path.splitext(pdf_path)[1].lower()
-        is_raster = ext in ['.tif', '.tiff']
-        needs_raster_profile = False
-
-        # Prüfe auf Georeferenz (für PDFs)
-        if not is_raster:
-            try:
-                from osgeo import gdal
-                ds = gdal.Open(pdf_path)
-                has_georef = False
-                if ds is not None:
-                    gt = ds.GetGeoTransform()
-                    proj = ds.GetProjectionRef()
-                    if gt and proj:
-                        has_georef = True
-                    ds = None
-                if not has_georef:
-                    needs_raster_profile = True
-                    logger.warning(f"Keine Georeferenz im PDF gefunden, setze -p raster für {pdf_path}")
-            except Exception as e:
-                needs_raster_profile = True
-                logger.warning(f"Fehler beim Prüfen der Georeferenz: {e}. Setze -p raster für {pdf_path}")
-        else:
-            needs_raster_profile = True
-            logger.info(f"Rasterdatei erkannt ({pdf_path}), setze -p raster")
-
-        cmd = [
-            gdal2tiles_executable,
-            '-z', f'{minzoom}-{maxzoom}',
-            '-r', 'bilinear',
-            '-w', 'none',
-        ]
-        if needs_raster_profile:
-            cmd.extend(['-p', 'raster'])
-        if srs:
-            cmd.extend(["--s_srs", srs])
-        cmd.extend([pdf_path, tms_dir])
-        logger.info(f"Starte gdal2tiles: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-        if result.returncode != 0:
-            error_output = result.stderr or result.stdout
-            logger.error(f"gdal2tiles Fehler (Return Code: {result.returncode}): {error_output}")
-            raise Exception(f"gdal2tiles failed (Return Code: {result.returncode}): {error_output}")
-        logger.info(f"TMS erfolgreich erzeugt: {tms_dir}")
-        return True
-    except Exception as e:
-        logger.error(f"TMS-Konvertierung fehlgeschlagen: {e}")
-        raise
-
-if __name__ == "__main__":
-    # Beispielverwendung/Test
-    if len(sys.argv) != 3:
-        print("Usage: python convert_dxf_to_geopdf.py <input.dxf> <output.pdf>")
-        sys.exit(1)
-    
-    input_dxf = sys.argv[1]
-    output_pdf = sys.argv[2]
-    
-    try:
-        dxf_to_geopdf(input_dxf, output_pdf)
-        print(f"Conversion successful: {output_pdf}")
-    except Exception as e:
-        print(f"Conversion failed: {e}")
-        sys.exit(1)

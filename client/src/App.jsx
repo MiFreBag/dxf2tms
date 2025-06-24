@@ -767,4 +767,191 @@ function App() {
                                           try {
                                             const response = await fetch(`${API}/maptiler/${file.id}`, {
                                               method: 'POST',
-                                              headers:
+                                              headers: {
+                                                'Authorization': `Bearer ${token}`,
+                                              },
+                                            });
+                                            if (response.ok) {
+                                              addMessage(`MapTiler-Job für ${file.name} gestartet`, 'success');
+                                            } else {
+                                              const err = await response.json();
+                                              addMessage(`MapTiler-Fehler: ${err.detail || 'Unbekannter Fehler'}`, 'error');
+                                            }
+                                          } catch (error) {
+                                            addMessage('Fehler beim Starten des MapTiler-Jobs', 'error');
+                                            console.error('MapTiler-Fehler:', error);
+                                          }
+                                        }}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-md transition-colors"
+                                      >
+                                        <Layers className="w-3 h-3" />
+                                        MapTiler starten
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Footer mit API-Dokumentation Link */}
+                    <div className="px-6 py-4 border-t border-gray-200 text-sm text-gray-500">
+                      API-Dokumentation: 
+                      <a href="https://docs.maptiler.com/cloud/api/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">
+                        MapTiler API Docs
+                      </a>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          {page === 'filebrowser' && (
+            <FileBrowser 
+              files={files} 
+              onDelete={handleDelete} 
+              onPreview={handlePreview} 
+              onDownload={handleDownload}
+              convertingFiles={convertingFiles}
+              onConvert={handleConvert}
+              selectedFiles={selectedFiles}
+              setSelectedFiles={setSelectedFiles}
+              addMessage={addMessage}
+              token={token}
+              api={API}
+            />
+          )}
+          {page === 'map' && (
+            <div className="h-full">
+              <Map 
+                tmsLayers={tmsLayers} 
+                onRefresh={fetchTmsLayers} 
+                api={API} 
+                token={token} 
+                addMessage={addMessage} 
+              />
+            </div>
+          )}
+          {page === 'workflow-automation' && (
+            <WorkflowAutomation api={API} token={token} addMessage={addMessage} />
+          )}
+          {page === 'n8n' && (
+            <div className="p-4 lg:p-6 bg-white rounded-lg shadow-sm border">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">n8n Workflow</h2>
+              <p className="text-gray-600 mb-4">
+                Verwende n8n zur Automatisierung deiner Workflows. Du kannst bestehende Workflows importieren oder neue erstellen.
+              </p>
+              <a 
+                href="https://n8n.io/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                <Layers className="w-5 h-5" />
+                Zu n8n wechseln
+              </a>
+            </div>
+          )}
+          {page === 'service-task-manager' && (
+            <ServiceTaskManager 
+              api={API} 
+              token={token} 
+              addMessage={addMessage} 
+              dockerServicesData={dockerServicesData} 
+              fetchDockerServices={fetchDockerServices} 
+            />
+          )}
+          {page === 'container-monitor' && (
+            <ContainerMonitor 
+              api={API} 
+              token={token} 
+              addMessage={addMessage} 
+              dockerContainers={dockerContainers} 
+              dockerImages={dockerImages} 
+              dockerVolumes={dockerVolumes} 
+              fetchDockerServices={fetchDockerServices} 
+            />
+          )}
+        </main>
+      </div>
+
+      {/* TMS Preview Dialog */}
+      {showTmsPreviewDialog && (
+        <TmsPreviewDialog 
+          file={tmsPreviewFile} 
+          onClose={() => setShowTmsPreviewDialog(false)} 
+          api={API} 
+          token={token} 
+          addMessage={addMessage} 
+        />
+      )}
+
+      {/* Blobstore Dialog */}
+      {showBlobstore && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full">
+            <div className="px-6 py-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">Blobstore Vorschauen</h3>
+            </div>
+            <div className="p-6">
+              {previewBlobs.length === 0 ? (
+                <div className="text-center text-gray-500 py-4">
+                  Keine Vorschauen verfügbar
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {previewBlobs.map(blob => (
+                    <div key={blob.fileId} className="flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-gray-400" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {blob.fileName}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {blob.url}
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <a 
+                          href={blob.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700 text-sm"
+                        >
+                          Ansehen
+                        </a>
+                        <button
+                          onClick={() => {
+                            removePreviewBlob(blob.fileId);
+                            addMessage('Vorschau entfernt', 'success');
+                          }}
+                          className="ml-2 text-red-600 hover:text-red-700 text-sm"
+                          title="Vorschau entfernen"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t">
+              <button
+                onClick={() => setShowBlobstore(false)}
+                className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default App
