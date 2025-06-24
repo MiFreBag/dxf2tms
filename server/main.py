@@ -448,12 +448,14 @@ async def list_files(
             # Deserialisierung
             try:
                 bbox = json.loads(bbox) if bbox else None
-            except Exception:
-                pass
+            except Exception as ex:
+                logger.warning(f"Fehler beim Parsen von bbox für Datei {row[0]}: {ex}")
+                bbox = None
             try:
                 layer_info = json.loads(layer_info) if layer_info else None
-            except Exception:
-                pass
+            except Exception as ex:
+                logger.warning(f"Fehler beim Parsen von layer_info für Datei {row[0]}: {ex}")
+                layer_info = None
             files.append({
                 "id": row[0],
                 "name": row[1],
@@ -470,8 +472,8 @@ async def list_files(
             })
         return files
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Dateien: {e}")
-        raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Dateien")
+        logger.error(f"Fehler beim Abrufen der Dateien: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Fehler beim Abrufen der Dateien: {str(e)}")
 
 @app.get("/api/files/{file_id}")
 async def get_file_details(file_id: str, user: str = Depends(verify_token), db: sqlite3.Connection = Depends(get_db)):
