@@ -220,7 +220,7 @@ function FileBrowser({ token, onMessage }) {
       setSelectedItems(new Set());
       setDeleteConfirm(null);
       await loadFiles(); // Neu laden
-    } catch (error) {  // Add semicolon here
+    } catch (error) {
       console.error('Fehler beim Löschen:', error);
       onMessage?.('Fehler beim Löschen', 'error');
     }
