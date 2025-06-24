@@ -470,6 +470,27 @@ function App() {
     { id: 'api-docs', label: 'API Docs', icon: BookOpen },
   ]
 
+  // Health-Check Watchdog
+  const lastHealthy = useRef(true);
+  useEffect(() => {
+    function checkHealth() {
+      fetch(`${API}/health`).then(res => {
+        if (!res.ok) throw new Error('Healthcheck fehlgeschlagen');
+        if (!lastHealthy.current) {
+          addMessage('Backend wieder erreichbar', 'success');
+          lastHealthy.current = true;
+        }
+      }).catch(() => {
+        if (lastHealthy.current) {
+          addMessage('Backend nicht erreichbar!', 'error');
+          lastHealthy.current = false;
+        }
+      });
+    }
+    const interval = setInterval(checkHealth, 10000); // alle 10 Sekunden
+    return () => clearInterval(interval);
+  }, [addMessage]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Messages */}
@@ -1000,31 +1021,8 @@ function App() {
           </div>
         </div>
       )}
-
-      {/* Health-Check Watchdog entfernt! */}
     </div>
   )
-
-  // Health-Check Watchdog (korrekt im Funktionskörper, nach allen Handlern, vor return)
-  const lastHealthy = useRef(true);
-  useEffect(() => {
-    function checkHealth() {
-      fetch(`${API}/health`).then(res => {
-        if (!res.ok) throw new Error('Healthcheck fehlgeschlagen');
-        if (!lastHealthy.current) {
-          addMessage('Backend wieder erreichbar', 'success');
-          lastHealthy.current = true;
-        }
-      }).catch(() => {
-        if (lastHealthy.current) {
-          addMessage('Backend nicht erreichbar!', 'error');
-          lastHealthy.current = false;
-        }
-      });
-    }
-    const interval = setInterval(checkHealth, 10000); // alle 10 Sekunden
-    return () => clearInterval(interval);
-  }, [addMessage]);
 }
 
 export default App
