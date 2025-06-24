@@ -176,179 +176,179 @@ class DXFToGeoPDFConverter:
             logger.error(f"Failed to apply symbolization: {e}")
             raise
     
-  def create_print_layout(self, layer: QgsVectorLayer, 
-                      layout_name: str = "DXF_Layout",
-                      page_size: str = "A4",
-                      add_elements: bool = True) -> QgsPrintLayout:
-    """
-    Print Layout erstellen mit korrekter Seitengröße-Unterstützung
+    def create_print_layout(self, layer: QgsVectorLayer, 
+                          layout_name: str = "DXF_Layout",
+                          page_size: str = "A4",
+                          add_elements: bool = True) -> QgsPrintLayout:
+        """
+        Print Layout erstellen mit korrekter Seitengröße-Unterstützung
     
-    Args:
-        layer: Der Hauptlayer für die Karte
-        layout_name: Name des Layouts
-        page_size: Seitengröße (A4, A3, A2, A1, A0, A5)
-        add_elements: Zusätzliche Kartenelemente hinzufügen
+        Args:
+            layer: Der Hauptlayer für die Karte
+            layout_name: Name des Layouts
+            page_size: Seitengröße (A4, A3, A2, A1, A0, A5)
+            add_elements: Zusätzliche Kartenelemente hinzufügen
         
-    Returns:
-        QgsPrintLayout: Erstelltes Layout
-    """
-    try:
-        # Layout erstellen
-        layout = QgsPrintLayout(self.project)
-        layout.initializeDefaults()
-        layout.setName(layout_name)
-        self.project.layoutManager().addLayout(layout)
+        Returns:
+            QgsPrintLayout: Erstelltes Layout
+        """
+        try:
+            # Layout erstellen
+            layout = QgsPrintLayout(self.project)
+            layout.initializeDefaults()
+            layout.setName(layout_name)
+            self.project.layoutManager().addLayout(layout)
 
-        # Kartenelement erstellen
-        map_item = QgsLayoutItemMap(layout)
+            # Kartenelement erstellen
+            map_item = QgsLayoutItemMap(layout)
 
-        # *** KORRIGIERT: Dynamische Seitengröße basierend auf page_size Parameter ***
-        page_size_upper = page_size.upper()
-        
-        # Seitengröße und Ränder bestimmen (Hochformat als Basis)
-        if page_size_upper == "A0":
-            page_width, page_height = 841, 1189  # mm
-            map_margins = 25
-        elif page_size_upper == "A1":
-            page_width, page_height = 594, 841   # mm
-            map_margins = 20
-        elif page_size_upper == "A2":
-            page_width, page_height = 420, 594   # mm
-            map_margins = 20
-        elif page_size_upper == "A3":
-            page_width, page_height = 297, 420   # mm
-            map_margins = 15
-        elif page_size_upper == "A4":
-            page_width, page_height = 210, 297   # mm
-            map_margins = 10
-        elif page_size_upper == "A5":
-            page_width, page_height = 148, 210   # mm
-            map_margins = 8
-        else:
-            # Default fallback auf A4
-            page_width, page_height = 210, 297   # mm
-            map_margins = 10
-            logger.warning(f"Unbekannte Seitengröße '{page_size}', verwende A4 als Fallback")
+            # *** KORRIGIERT: Dynamische Seitengröße basierend auf page_size Parameter ***
+            page_size_upper = page_size.upper()
+            
+            # Seitengröße und Ränder bestimmen (Hochformat als Basis)
+            if page_size_upper == "A0":
+                page_width, page_height = 841, 1189  # mm
+                map_margins = 25
+            elif page_size_upper == "A1":
+                page_width, page_height = 594, 841   # mm
+                map_margins = 20
+            elif page_size_upper == "A2":
+                page_width, page_height = 420, 594   # mm
+                map_margins = 20
+            elif page_size_upper == "A3":
+                page_width, page_height = 297, 420   # mm
+                map_margins = 15
+            elif page_size_upper == "A4":
+                page_width, page_height = 210, 297   # mm
+                map_margins = 10
+            elif page_size_upper == "A5":
+                page_width, page_height = 148, 210   # mm
+                map_margins = 8
+            else:
+                # Default fallback auf A4
+                page_width, page_height = 210, 297   # mm
+                map_margins = 10
+                logger.warning(f"Unbekannte Seitengröße '{page_size}', verwende A4 als Fallback")
 
-        # *** WICHTIG: Immer Querformat verwenden (Landscape) ***
-        # Für bessere Darstellung von technischen Plänen
-        if page_width < page_height:
-            page_width, page_height = page_height, page_width
-        
-        logger.info(f"Layout-Seitengröße: {page_size_upper} Querformat ({page_width}x{page_height} mm)")
+            # *** WICHTIG: Immer Querformat verwenden (Landscape) ***
+            # Für bessere Darstellung von technischen Plänen
+            if page_width < page_height:
+                page_width, page_height = page_height, page_width
+            
+            logger.info(f"Layout-Seitengröße: {page_size_upper} Querformat ({page_width}x{page_height} mm)")
 
-        # Seitenformat im Layout setzen
-        page_collection = layout.pageCollection()
-        if page_collection.pageCount() > 0:
-            page = page_collection.page(0)
-            page.setPageSize(QgsLayoutSize(page_width, page_height, QgsUnitTypes.LayoutMillimeters))
+            # Seitenformat im Layout setzen
+            page_collection = layout.pageCollection()
+            if page_collection.pageCount() > 0:
+                page = page_collection.page(0)
+                page.setPageSize(QgsLayoutSize(page_width, page_height, QgsUnitTypes.LayoutMillimeters))
 
-        # Kartenbereich definieren
-        title_space = 20 if add_elements else 0
-        map_width = page_width - (2 * map_margins)
-        map_height = page_height - (2 * map_margins) - title_space
+            # Kartenbereich definieren
+            title_space = 20 if add_elements else 0
+            map_width = page_width - (2 * map_margins)
+            map_height = page_height - (2 * map_margins) - title_space
 
-        # Karte positionieren und dimensionieren
-        map_item.attemptMove(QgsLayoutPoint(map_margins, map_margins + title_space))
-        map_item.attemptResize(QgsLayoutSize(map_width, map_height, QgsUnitTypes.LayoutMillimeters))
+            # Karte positionieren und dimensionieren
+            map_item.attemptMove(QgsLayoutPoint(map_margins, map_margins + title_space))
+            map_item.attemptResize(QgsLayoutSize(map_width, map_height, QgsUnitTypes.LayoutMillimeters))
 
-        # Layer-Extent auf Karte setzen
-        extent = layer.extent()
-        if extent.isEmpty():
-            logger.warning("Layer extent ist leer!")
-            # Fallback-Extent setzen
-            extent.set(-1000, -1000, 1000, 1000)
-        else:
-            # Kleinen Buffer hinzufügen für bessere Darstellung
-            buffer = max(extent.width(), extent.height()) * 0.05
-            extent.setXMinimum(extent.xMinimum() - buffer)
-            extent.setYMinimum(extent.yMinimum() - buffer)
-            extent.setXMaximum(extent.xMaximum() + buffer)
-            extent.setYMaximum(extent.yMaximum() + buffer)
-        
-        map_item.setExtent(extent)
-        
-        # Karte zum Layout hinzufügen
-        layout.addLayoutItem(map_item)
+            # Layer-Extent auf Karte setzen
+            extent = layer.extent()
+            if extent.isEmpty():
+                logger.warning("Layer extent ist leer!")
+                # Fallback-Extent setzen
+                extent.set(-1000, -1000, 1000, 1000)
+            else:
+                # Kleinen Buffer hinzufügen für bessere Darstellung
+                buffer = max(extent.width(), extent.height()) * 0.05
+                extent.setXMinimum(extent.xMinimum() - buffer)
+                extent.setYMinimum(extent.yMinimum() - buffer)
+                extent.setXMaximum(extent.xMaximum() + buffer)
+                extent.setYMaximum(extent.yMaximum() + buffer)
+            
+            map_item.setExtent(extent)
+            
+            # Karte zum Layout hinzufügen
+            layout.addLayoutItem(map_item)
 
-        if add_elements:
-            self._add_layout_elements(layout, map_item, layer, page_width, page_height)
+            if add_elements:
+                self._add_layout_elements(layout, map_item, layer, page_width, page_height)
 
-        logger.info(f"Print layout created: {layout_name} ({page_size_upper} Querformat)")
-        
-        return layout
-        
-    except Exception as e:
-        logger.error(f"Failed to create print layout: {e}")
-        raise
+            logger.info(f"Print layout created: {layout_name} ({page_size_upper} Querformat)")
+            
+            return layout
+            
+        except Exception as e:
+            logger.error(f"Failed to create print layout: {e}")
+            raise
 
-def _add_layout_elements(self, layout: QgsPrintLayout, map_item: QgsLayoutItemMap, 
-                       layer: QgsVectorLayer, page_width: float, page_height: float):
-    """
-    Zusätzliche Layout-Elemente hinzufügen (Titel, Maßstab, etc.)
-    Angepasst für verschiedene Seitengrößen
+    def _add_layout_elements(self, layout: QgsPrintLayout, map_item: QgsLayoutItemMap, 
+                           layer: QgsVectorLayer, page_width: float, page_height: float):
+        """
+        Zusätzliche Layout-Elemente hinzufügen (Titel, Maßstab, etc.)
+        Angepasst für verschiedene Seitengrößen
     
-    Args:
-        layout: Das Layout
-        map_item: Das Kartenelement
-        layer: Der Hauptlayer
-        page_width: Seitenbreite in mm
-        page_height: Seitenhöhe in mm
-    """
-    try:
-        # Schriftgrößen basierend auf Seitengröße anpassen
-        if page_width >= 800:  # A0/A1
-            title_font_size = 18
-            info_font_size = 12
-        elif page_width >= 400:  # A2/A3
-            title_font_size = 16
-            info_font_size = 11
-        else:  # A4/A5
-            title_font_size = 14
-            info_font_size = 10
+        Args:
+            layout: Das Layout
+            map_item: Das Kartenelement
+            layer: Der Hauptlayer
+            page_width: Seitenbreite in mm
+            page_height: Seitenhöhe in mm
+        """
+        try:
+            # Schriftgrößen basierend auf Seitengröße anpassen
+            if page_width >= 800:  # A0/A1
+                title_font_size = 18
+                info_font_size = 12
+            elif page_width >= 400:  # A2/A3
+                title_font_size = 16
+                info_font_size = 11
+            else:  # A4/A5
+                title_font_size = 14
+                info_font_size = 10
 
-        # Titel hinzufügen
-        title_item = QgsLayoutItemLabel(layout)
-        title_item.setText(f"DXF-Karte: {layer.name()}")
-        title_item.setFont(QFont("Arial", title_font_size, QFont.Bold))
-        title_item.attemptMove(QgsLayoutPoint(10, 5))
-        title_item.attemptResize(QgsLayoutSize(page_width - 20, 15, QgsUnitTypes.LayoutMillimeters))
-        layout.addLayoutItem(title_item)
+            # Titel hinzufügen
+            title_item = QgsLayoutItemLabel(layout)
+            title_item.setText(f"DXF-Karte: {layer.name()}")
+            title_item.setFont(QFont("Arial", title_font_size, QFont.Bold))
+            title_item.attemptMove(QgsLayoutPoint(10, 5))
+            title_item.attemptResize(QgsLayoutSize(page_width - 20, 15, QgsUnitTypes.LayoutMillimeters))
+            layout.addLayoutItem(title_item)
 
-        # Bounding Box und SRS als Text einblenden
-        extent = layer.extent()
-        bbox_text = f"BBox: [{extent.xMinimum():.2f}, {extent.yMinimum():.2f}, {extent.xMaximum():.2f}, {extent.yMaximum():.2f}]"
-        srs_text = f"SRS: {layer.crs().authid()}"
-        format_text = f"Format: {page_width:.0f}x{page_height:.0f}mm"
-        info_text = f"{bbox_text} | {srs_text} | {format_text}"
-        
-        info_item = QgsLayoutItemLabel(layout)
-        info_item.setText(info_text)
-        info_item.setFont(QFont("Arial", info_font_size))
-        info_item.attemptMove(QgsLayoutPoint(10, 20))
-        info_item.attemptResize(QgsLayoutSize(page_width - 20, 10, QgsUnitTypes.LayoutMillimeters))
-        layout.addLayoutItem(info_item)
+            # Bounding Box und SRS als Text einblenden
+            extent = layer.extent()
+            bbox_text = f"BBox: [{extent.xMinimum():.2f}, {extent.yMinimum():.2f}, {extent.xMaximum():.2f}, {extent.yMaximum():.2f}]"
+            srs_text = f"SRS: {layer.crs().authid()}"
+            format_text = f"Format: {page_width:.0f}x{page_height:.0f}mm"
+            info_text = f"{bbox_text} | {srs_text} | {format_text}"
+            
+            info_item = QgsLayoutItemLabel(layout)
+            info_item.setText(info_text)
+            info_item.setFont(QFont("Arial", info_font_size))
+            info_item.attemptMove(QgsLayoutPoint(10, 20))
+            info_item.attemptResize(QgsLayoutSize(page_width - 20, 10, QgsUnitTypes.LayoutMillimeters))
+            layout.addLayoutItem(info_item)
 
-        # Maßstabsleiste hinzufügen (Position angepasst an Seitengröße)
-        scalebar_item = QgsLayoutItemScaleBar(layout)
-        scalebar_item.setLinkedMap(map_item)
-        scalebar_item.setStyle('Single Box')
-        scalebar_item.setUnits(QgsUnitTypes.DistanceMeters)
-        scalebar_item.setNumberOfSegments(4)
-        scalebar_item.setNumberOfSegmentsLeft(0)
-        
-        # Skalierung der Maßstabsleiste basierend auf Seitengröße
-        scalebar_width = min(page_width * 0.2, 80)  # Max 80mm, 20% der Seitenbreite
-        scalebar_y = page_height - 25  # 25mm vom unteren Rand
-        
-        scalebar_item.attemptMove(QgsLayoutPoint(10, scalebar_y))
-        scalebar_item.attemptResize(QgsLayoutSize(scalebar_width, 10, QgsUnitTypes.LayoutMillimeters))
-        layout.addLayoutItem(scalebar_item)
-        
-        logger.info(f"Layout elements added for {page_width:.0f}x{page_height:.0f}mm page")
-        
-    except Exception as e:
-        logger.warning(f"Failed to add some layout elements: {e}")
+            # Maßstabsleiste hinzufügen (Position angepasst an Seitengröße)
+            scalebar_item = QgsLayoutItemScaleBar(layout)
+            scalebar_item.setLinkedMap(map_item)
+            scalebar_item.setStyle('Single Box')
+            scalebar_item.setUnits(QgsUnitTypes.DistanceMeters)
+            scalebar_item.setNumberOfSegments(4)
+            scalebar_item.setNumberOfSegmentsLeft(0)
+            
+            # Skalierung der Maßstabsleiste basierend auf Seitengröße
+            scalebar_width = min(page_width * 0.2, 80)  # Max 80mm, 20% der Seitenbreite
+            scalebar_y = page_height - 25  # 25mm vom unteren Rand
+            
+            scalebar_item.attemptMove(QgsLayoutPoint(10, scalebar_y))
+            scalebar_item.attemptResize(QgsLayoutSize(scalebar_width, 10, QgsUnitTypes.LayoutMillimeters))
+            layout.addLayoutItem(scalebar_item)
+            
+            logger.info(f"Layout elements added for {page_width:.0f}x{page_height:.0f}mm page")
+            
+        except Exception as e:
+            logger.warning(f"Failed to add some layout elements: {e}")
 
 # Zusätzliche Hilfsfunktion für Seitengrößen-Validierung
 def get_supported_page_sizes():
