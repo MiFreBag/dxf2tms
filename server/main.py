@@ -878,7 +878,7 @@ async def start_maptiler_job(file_id: str, user: str = Depends(verify_token), db
         'id': job_id,
         'name': f"MapTiler für {row[1]}",
         'type': 'maptiler',
-        'status': 'queued', // Changed from 'queued' to 'queued'
+        'status': 'queued',  # Changed from 'queued' to 'queued'
         'createdAt': datetime.now().isoformat(),
         'inputFile': {'name': row[1], 'size': row[3]},
         'parameters': {},
