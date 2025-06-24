@@ -31,8 +31,8 @@ function FileBrowser({ token, onMessage }) {
   const basePaths = [
     { name: 'uploads', path: '/uploads', icon: <Upload className="w-4 h-4" /> },
     { name: 'output', path: '/output', icon: <Download className="w-4 h-4" /> },
-    { name: 'tms', path: '/api/tms', icon: <Layers className="w-4 h-4" /> },
-    { name: 'files', path: '/files', icon: <HardDrive className="w-4 h-4" /> }
+    { name: 'tms', path: '/api/tms', icon: <Layers className="w-4 h-4" /> }
+    // { name: 'files', path: '/files', icon: <HardDrive className="w-4 h-4" /> } // entfernt, da Backend nicht genutzt
   ]
 
   // Datei-Icon basierend auf Extension
@@ -113,14 +113,8 @@ function FileBrowser({ token, onMessage }) {
               }
             }
           }
-        },
-        files: {
-          type: 'folder',
-          children: {
-            'document1.pdf': { type: 'file', size: 2048000, modified: '2024-01-20' },
-            'archive.zip': { type: 'file', size: 5120000, modified: '2024-01-21' }
-          }
         }
+        // files: { ... } entfernt, da Backend nicht genutzt
       }
       
       setFileTree(mockFileTree)

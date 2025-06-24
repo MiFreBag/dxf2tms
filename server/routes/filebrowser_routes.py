@@ -16,8 +16,7 @@ router = APIRouter()
 BASE_DIRS = {
     "uploads": "./uploads",
     "output": "./output", 
-    "tms": "./uploads/nodes/static",
-    "files": "./files"
+    "tms": "./uploads/nodes/static"
 }
 
 def get_file_info(path: Path) -> Dict[str, Any]:
