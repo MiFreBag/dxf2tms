@@ -464,7 +464,6 @@ function App() {
     { id: 'upload', label: 'Upload & Convert', icon: Upload },
     { id: 'filebrowser', label: 'Datei-Browser', icon: FileText },
     { id: 'map', label: 'Kartenansicht', icon: MapPin },
-    { id: 'workflow-automation', label: 'Workflow-Automatisierung', icon: Navigation },
     { id: 'n8n', label: 'n8n Workflow', icon: Layers },
     { id: 'service-task-manager', label: 'Service Task Manager', icon: Layers },
     { id: 'container-monitor', label: 'Container Monitor', icon: Layers },
@@ -834,9 +833,6 @@ function App() {
                 addMessage={addMessage} 
               />
             </div>
-          )}
-          {page === 'workflow-automation' && (
-            <WorkflowAutomation api={API} token={token} addMessage={addMessage} />
           )}
           {page === 'n8n' && (
             <div className="p-4 lg:p-6 bg-white rounded-lg shadow-sm border">
