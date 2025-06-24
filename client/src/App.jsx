@@ -454,6 +454,7 @@ function App() {
     { id: 'upload', label: 'Upload & Convert', icon: Upload },
     { id: 'filebrowser', label: 'Datei-Browser', icon: FileText },
     { id: 'map', label: 'Kartenansicht', icon: MapPin },
+    { id: 'workflow-automation', label: 'Workflow-Automatisierung', icon: Navigation },
     { id: 'n8n', label: 'n8n Workflow', icon: Layers },
     { id: 'service-task-manager', label: 'Service Task Manager', icon: Layers },
     { id: 'container-monitor', label: 'Container Monitor', icon: Layers },
@@ -1014,8 +1015,11 @@ function App() {
 
         {/* Dialog für TMS-Preview */}
         {showTmsPreviewDialog && tmsPreviewFile && (
-          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setTmsPreviewDialog(false)} />
+          <TmsPreviewDialog file={tmsPreviewFile} onClose={() => setShowTmsPreviewDialog(false)} />
         )}
+        {page === 'workflow-automation' && (
+            <WorkflowAutomation token={token} />
+          )}
         </main>
       </div>
     </div>
