@@ -106,7 +106,7 @@ app = FastAPI(
     description="API for converting DXF files to GeoPDF using QGIS",
     version="1.0.0",
     openapi_url="/api/openapi.json",
-    docs_url=None,
+    docs_url="/api/docs",  # <--- Hier wieder aktivieren
 )
 
 # CORS middleware for development and local frontend/backend separation
@@ -186,16 +186,6 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.utcnow()}
-
-@app.get("/api/swagger", include_in_schema=False)
-async def swagger_ui() -> HTMLResponse:
-    """Swagger UI bereitstellen"""
-    return get_swagger_ui_html(openapi_url=app.openapi_url, title=f"{app.title} - Swagger UI")
-
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    """Frontend Homepage"""
-    return templates.TemplateResponse("index.html", {"request": request})
 
 def custom_openapi():
     """Custom OpenAPI Schema"""
@@ -845,11 +835,6 @@ async def get_container_logs(container_id: str, user: str = Depends(verify_token
 def get_openapi_json():
     """OpenAPI-Schema bereitstellen"""
     return app.openapi()
-
-@app.get("/api/docs", include_in_schema=False)
-def get_docs():
-    """Swagger UI bereitstellen"""
-    return get_swagger_ui_html(openapi_url="/api/openapi.json", title="DXF to GeoPDF API Docs")
 
 @app.delete("/api/cleanup")
 async def cleanup_files(days: int = 7, status: str = "error"):
