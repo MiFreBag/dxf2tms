@@ -560,6 +560,8 @@ def convert_pdf_to_tms(pdf_path: str, tms_dir: str, minzoom: int = 0, maxzoom: i
         cmd.extend([pdf_path, tms_dir])
         logger.info(f"Starte gdal2tiles: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        logger.info(f"gdal2tiles stdout: {result.stdout}")
+        logger.info(f"gdal2tiles stderr: {result.stderr}")
         if result.returncode != 0:
             error_output = result.stderr or result.stdout
             logger.error(f"gdal2tiles Fehler (Return Code: {result.returncode}): {error_output}")
