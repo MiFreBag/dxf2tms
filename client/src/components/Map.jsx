@@ -65,13 +65,13 @@ function MapController({ selectedLayer, onBoundsStatusChange }) {
   return null
 }
 
-function Map({ files = [], onDeleteLayer }) {
+function Map({ tmsLayers = [], onDeleteLayer }) {
   const [selected, setSelected] = useState('')
   const [useMapServer, setUseMapServer] = useState(false)
   const [boundsStatus, setBoundsStatus] = useState({ found: true, message: '' });
 
   // Layer-Liste aus Props
-  const layers = files
+  const layers = tmsLayers
 
   // Helper für TileLayer-URL (Leaflet erwartet absoluten Pfad)
   const getTileLayerUrl = (layer) => {
