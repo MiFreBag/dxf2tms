@@ -1021,6 +1021,7 @@ function App() {
         const interval = setInterval(checkHealth, 10000); // alle 10 Sekunden
         return () => clearInterval(interval);
       }, [addMessage]);
+
     </div>
   )
 }
