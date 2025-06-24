@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { 
   Upload, 
   FileText, 
@@ -1000,6 +1000,27 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Health-Check Watchdog */}
+      const lastHealthy = useRef(true);
+      useEffect(() => {
+        function checkHealth() {
+          fetch(`${API}/health`).then(res => {
+            if (!res.ok) throw new Error('Healthcheck fehlgeschlagen');
+            if (!lastHealthy.current) {
+              addMessage('Backend wieder erreichbar', 'success');
+              lastHealthy.current = true;
+            }
+          }).catch(() => {
+            if (lastHealthy.current) {
+              addMessage('Backend nicht erreichbar!', 'error');
+              lastHealthy.current = false;
+            }
+          });
+        }
+        const interval = setInterval(checkHealth, 10000); // alle 10 Sekunden
+        return () => clearInterval(interval);
+      }, [addMessage]);
     </div>
   )
 }
