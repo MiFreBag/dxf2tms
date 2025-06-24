@@ -48,6 +48,10 @@ function MapController({ selectedLayer, onBoundsStatusChange }) {
             padding: [20, 20],
             maxZoom: 18 // Prevent zooming too far in
           });
+          // Nach fitBounds: Zoom mindestens auf 12 setzen
+          if (map.getZoom() < 12) {
+            map.setZoom(12);
+          }
           onBoundsStatusChange(true, 'Bounds fitted successfully.');
         } catch (error) {
           console.error('Error fitting bounds:', error);
