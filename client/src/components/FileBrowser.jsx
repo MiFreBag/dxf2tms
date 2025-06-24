@@ -9,16 +9,117 @@ import {
   ChevronRight,
   ChevronDown,
   HardDrive,
-  Upload, // Added import
+  Upload, 
   FileText,
-  Layers, // Added import
+  Layers, 
   Image,
   Archive,
   AlertCircle,
-  FolderX // Icon for empty folder state
+  FolderX,
+  Eye,
+  ExternalLink,
+  X
 } from 'lucide-react'
 
 const API = '/api'
+
+// Preview Modal Component
+function PreviewModal({ file, fileUrl, onClose, onDownload }) {
+  if (!file) return null
+
+  const isImage = ['tif', 'tiff', 'png', 'jpg', 'jpeg'].includes(
+    file.name?.split('.').pop()?.toLowerCase() || ''
+  )
+  
+  const isPdf = file.name?.toLowerCase().endsWith('.pdf')
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[90vh] w-full mx-4 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center gap-3">
+            <FileText className="w-5 h-5 text-blue-500" />
+            <div>
+              <h3 className="font-semibold text-gray-900">{file.name}</h3>
+              <p className="text-sm text-gray-500">
+                Größe: {file.size ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : 'Unbekannt'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onDownload}
+              className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 text-sm"
+            >
+              <Download className="w-4 h-4" />
+              Download
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1 text-gray-500 hover:text-gray-700 rounded"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 p-4 overflow-auto">
+          {isPdf && fileUrl ? (
+            <iframe
+              src={fileUrl}
+              className="w-full h-[60vh] border rounded"
+              title={`Preview of ${file.name}`}
+            />
+          ) : isImage && fileUrl ? (
+            <div className="flex justify-center">
+              <img
+                src={fileUrl}
+                alt={file.name}
+                className="max-w-full max-h-[60vh] object-contain rounded shadow"
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+              <FileText className="w-16 h-16 text-gray-300 mb-4" />
+              <h4 className="text-lg font-medium mb-2">Vorschau nicht verfügbar</h4>
+              <p className="text-sm text-center">
+                Für diesen Dateityp ist keine Vorschau verfügbar.<br />
+                Sie können die Datei herunterladen, um sie zu öffnen.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Download Progress Component
+function DownloadProgress({ fileName, progress, onCancel }) {
+  return (
+    <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg border p-4 max-w-sm w-full z-40">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Download className="w-4 h-4 text-blue-600" />
+          <span className="text-sm font-medium">Download läuft...</span>
+        </div>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="text-xs text-gray-600 mb-2 truncate">{fileName}</div>
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div 
+          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+      <div className="text-xs text-gray-500 mt-1">{progress}% abgeschlossen</div>
+    </div>
+  )
+}
 
 function FileBrowser({ token, onMessage }) {
   const [fileTree, setFileTree] = useState({})
@@ -26,14 +127,11 @@ function FileBrowser({ token, onMessage }) {
   const [expandedFolders, setExpandedFolders] = useState(new Set())
   const [selectedItems, setSelectedItems] = useState(new Set())
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-
-  // Basis-Verzeichnisse
-  const basePaths = [
-    { name: 'uploads', path: '/uploads', icon: <Upload className="w-4 h-4" /> },
-    { name: 'output', path: '/output', icon: <Download className="w-4 h-4" /> },
-    { name: 'tms', path: '/api/tms', icon: <Layers className="w-4 h-4" /> }
-    // { name: 'files', path: '/files', icon: <HardDrive className="w-4 h-4" /> } // entfernt, da Backend nicht genutzt
-  ]
+  
+  // Preview and Download states
+  const [previewModal, setPreviewModal] = useState({ isOpen: false, file: null, url: null })
+  const [downloadProgress, setDownloadProgress] = useState(null)
+  const [fileBlobs, setFileBlobs] = useState(new Map()) // Cache for file URLs
 
   // Datei-Icon basierend auf Extension
   const getFileIcon = (fileName) => {
@@ -114,7 +212,6 @@ function FileBrowser({ token, onMessage }) {
             }
           }
         }
-        // files: { ... } entfernt, da Backend nicht genutzt
       }
       
       setFileTree(mockFileTree)
@@ -126,6 +223,168 @@ function FileBrowser({ token, onMessage }) {
   useEffect(() => {
     loadFiles()
   }, [])
+
+  // File Preview Handler
+  const handlePreview = async (filePath, fileName, fileNode) => {
+    try {
+      // Check if we already have the blob cached
+      if (fileBlobs.has(filePath)) {
+        setPreviewModal({
+          isOpen: true,
+          file: { name: fileName, size: fileNode.size, path: filePath },
+          url: fileBlobs.get(filePath)
+        })
+        return
+      }
+
+      onMessage?.('Lade Vorschau...', 'info')
+      
+      // Try to fetch file content for preview
+      let fileUrl = null
+      
+      // For files in output or converted folders (PDFs), try direct download endpoint
+      if (filePath.includes('output/') || filePath.includes('converted/') || fileName.endsWith('.pdf')) {
+        // Extract UUID or use filename-based approach
+        const uuid = extractUuid(filePath)
+        if (uuid && uuid !== filePath) {
+          try {
+            const response = await fetch(`${API}/download/${uuid}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            })
+            
+            if (response.ok) {
+              const blob = await response.blob()
+              fileUrl = window.URL.createObjectURL(blob)
+              setFileBlobs(prev => new Map(prev).set(filePath, fileUrl))
+            }
+          } catch (error) {
+            console.log('Direct download failed, trying file browser endpoint')
+          }
+        }
+      }
+      
+      // Fallback: Try file browser endpoint
+      if (!fileUrl) {
+        try {
+          const response = await fetch(`${API}/filebrowser/download?path=${encodeURIComponent(filePath)}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          })
+          
+          if (response.ok) {
+            const blob = await response.blob()
+            fileUrl = window.URL.createObjectURL(blob)
+            setFileBlobs(prev => new Map(prev).set(filePath, fileUrl))
+          }
+        } catch (error) {
+          console.log('File browser download failed')
+        }
+      }
+      
+      setPreviewModal({
+        isOpen: true,
+        file: { name: fileName, size: fileNode.size, path: filePath },
+        url: fileUrl
+      })
+      
+      if (fileUrl) {
+        onMessage?.('Vorschau geladen', 'success')
+      } else {
+        onMessage?.('Vorschau nicht verfügbar', 'warning')
+      }
+      
+    } catch (error) {
+      console.error('Preview error:', error)
+      onMessage?.('Fehler beim Laden der Vorschau', 'error')
+    }
+  }
+
+  // File Download Handler
+  const handleDownload = async (filePath, fileName, fileNode) => {
+    try {
+      setDownloadProgress({ fileName, progress: 0 })
+      
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setDownloadProgress(prev => {
+          if (!prev) return null
+          const newProgress = Math.min(prev.progress + 20, 90)
+          return { ...prev, progress: newProgress }
+        })
+      }, 200)
+
+      let downloadSuccess = false
+      
+      // Try direct download endpoint first (for converted files)
+      if (filePath.includes('output/') || filePath.includes('converted/') || fileName.endsWith('.pdf')) {
+        const uuid = extractUuid(filePath)
+        if (uuid && uuid !== filePath) {
+          try {
+            const response = await fetch(`${API}/download/${uuid}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            })
+            
+            if (response.ok) {
+              const blob = await response.blob()
+              downloadFile(blob, fileName)
+              downloadSuccess = true
+            }
+          } catch (error) {
+            console.log('Direct download failed, trying file browser endpoint')
+          }
+        }
+      }
+      
+      // Fallback: Use file browser endpoint
+      if (!downloadSuccess) {
+        const response = await fetch(`${API}/filebrowser/download?path=${encodeURIComponent(filePath)}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        })
+        
+        if (response.ok) {
+          const blob = await response.blob()
+          downloadFile(blob, fileName)
+          downloadSuccess = true
+        } else {
+          throw new Error(`Download failed: ${response.status}`)
+        }
+      }
+      
+      clearInterval(progressInterval)
+      setDownloadProgress(prev => prev ? { ...prev, progress: 100 } : null)
+      
+      setTimeout(() => {
+        setDownloadProgress(null)
+        if (downloadSuccess) {
+          onMessage?.('Download abgeschlossen', 'success')
+        }
+      }, 1000)
+      
+    } catch (error) {
+      console.error('Download error:', error)
+      setDownloadProgress(null)
+      onMessage?.('Fehler beim Download', 'error')
+    }
+  }
+
+  // Helper function to download blob as file
+  const downloadFile = (blob, fileName) => {
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  }
 
   // Ordner auf-/zuklappen
   const toggleFolder = (path) => {
@@ -160,39 +419,34 @@ function FileBrowser({ token, onMessage }) {
 
   // Hilfsfunktion: Extrahiere UUID aus Pfad
   const extractUuid = (path) => {
-    // Sucht nach UUID im Pfad, z.B. uploads/uuid.dxf
-    const match = path.match(/[0-9a-fA-F-]{36}/);
-    return match ? match[0] : path;
-  };
+    const match = path.match(/[0-9a-fA-F-]{36}/)
+    return match ? match[0] : path
+  }
 
   // Löschen ausführen
   const handleDelete = async () => {
     if (!deleteConfirm) return
-    let deletedCount = 0;
+    let deletedCount = 0
     try {
       for (const fullPath of deleteConfirm) {
-        let targetId;
-        let endpoint;
+        let targetId
+        let endpoint
 
-        // Check if it's a TMS layer (folder under 'tms/')
         if (fullPath.startsWith('tms/')) {
-          // Extract the TMS layer ID (the folder name after 'tms/')
-          const parts = fullPath.split('/');
-          if (parts.length < 2) { // e.g., just 'tms/'
-            onMessage?.(`Ungültiger TMS-Pfad: ${fullPath}`, 'warning');
-            continue;
+          const parts = fullPath.split('/')
+          if (parts.length < 2) {
+            onMessage?.(`Ungültiger TMS-Pfad: ${fullPath}`, 'warning')
+            continue
           }
-          targetId = parts[1]; // The ID of the TMS layer (e.g., 'layer1' or a UUID)
-          endpoint = `${API}/tms/${targetId}`;
+          targetId = parts[1]
+          endpoint = `${API}/tms/${targetId}`
         } else {
-          // Assume it's a file managed by the /api/files endpoint
-          // Extract UUID from the path (e.g., 'uploads/uuid.dxf' -> 'uuid')
-          targetId = extractUuid(fullPath);
+          targetId = extractUuid(fullPath)
           if (!targetId || targetId === fullPath) {
-            onMessage?.(`Kann '${fullPath}' nicht löschen (kein gültiger ID gefunden)`, 'warning');
-            continue;
+            onMessage?.(`Kann '${fullPath}' nicht löschen (kein gültiger ID gefunden)`, 'warning')
+            continue
           }
-          endpoint = `${API}/files/${targetId}`;
+          endpoint = `${API}/files/${targetId}`
         }
 
         const response = await fetch(endpoint, {
@@ -201,23 +455,23 @@ function FileBrowser({ token, onMessage }) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           }
-        });
+        })
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`Fehler beim Löschen von ${fullPath}: ${errorData.detail || response.statusText}`);
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(`Fehler beim Löschen von ${fullPath}: ${errorData.detail || response.statusText}`)
         }
-        deletedCount++;
+        deletedCount++
       }
       if (deletedCount > 0) {
-        onMessage?.(`${deletedCount} Element(e) gelöscht`, 'success');
+        onMessage?.(`${deletedCount} Element(e) gelöscht`, 'success')
       }
-      setSelectedItems(new Set());
-      setDeleteConfirm(null);
-      await loadFiles(); // Neu laden
+      setSelectedItems(new Set())
+      setDeleteConfirm(null)
+      await loadFiles()
     } catch (error) {
-      console.error('Fehler beim Löschen:', error);
-      onMessage?.('Fehler beim Löschen', 'error');
+      console.error('Fehler beim Löschen:', error)
+      onMessage?.('Fehler beim Löschen', 'error')
     }
   }
 
@@ -278,12 +532,38 @@ function FileBrowser({ token, onMessage }) {
           {/* Name */}
           <span className="flex-1 text-sm">{name}</span>
           
+          {/* Action buttons for files */}
+          {!isFolder && (
+            <div className="flex items-center gap-1 ml-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePreview(path, name, node)
+                }}
+                className="p-1 hover:bg-blue-100 rounded text-blue-600"
+                title="Vorschau"
+              >
+                <Eye className="w-3 h-3" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDownload(path, name, node)
+                }}
+                className="p-1 hover:bg-green-100 rounded text-green-600"
+                title="Download"
+              >
+                <Download className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+          
           {/* Größe/Details */}
           {!isFolder && node.size && (
-            <span className="text-xs text-gray-500">{formatSize(node.size)}</span>
+            <span className="text-xs text-gray-500 ml-2">{formatSize(node.size)}</span>
           )}
           {isFolder && hasChildren && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-500 ml-2">
               {Object.keys(node.children).length} Elemente
             </span>
           )}
@@ -307,19 +587,20 @@ function FileBrowser({ token, onMessage }) {
     )
   }
 
+  // Cleanup blob URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      fileBlobs.forEach(url => window.URL.revokeObjectURL(url))
+    }
+  }, [])
+
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
       {/* Header/Controls */}
       <div className="bg-white border-b p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">Datei-Browser</h2>
           <div className="flex gap-2">
-            {/* Optional: Upload Button hier, falls Upload im Browser gewünscht ist */}
-            {/* <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2">
-              <Upload className="w-4 h-4" />
-              Hochladen
-            </button> */}
             <button
               onClick={loadFiles}
               disabled={loading}
@@ -372,6 +653,29 @@ function FileBrowser({ token, onMessage }) {
           </div>
         )}
       </div>
+
+      {/* Preview Modal */}
+      {previewModal.isOpen && (
+        <PreviewModal
+          file={previewModal.file}
+          fileUrl={previewModal.url}
+          onClose={() => setPreviewModal({ isOpen: false, file: null, url: null })}
+          onDownload={() => {
+            if (previewModal.file) {
+              handleDownload(previewModal.file.path, previewModal.file.name, previewModal.file)
+            }
+          }}
+        />
+      )}
+
+      {/* Download Progress */}
+      {downloadProgress && (
+        <DownloadProgress
+          fileName={downloadProgress.fileName}
+          progress={downloadProgress.progress}
+          onCancel={() => setDownloadProgress(null)}
+        />
+      )}
 
       {/* Lösch-Bestätigung */}
       {deleteConfirm && (
