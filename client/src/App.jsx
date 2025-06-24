@@ -835,21 +835,12 @@ function App() {
             </div>
           )}
           {page === 'n8n' && (
-            <div className="p-4 lg:p-6 bg-white rounded-lg shadow-sm border">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">n8n Workflow</h2>
-              <p className="text-gray-600 mb-4">
-                Verwende n8n zur Automatisierung deiner Workflows. Du kannst bestehende Workflows importieren oder neue erstellen.
-              </p>
-              <a 
-                href="https://n8n.io/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              >
-                <Layers className="w-5 h-5" />
-                Zu n8n wechseln
-              </a>
-            </div>
+            <iframe
+              src="/n8n/"
+              title="n8n Workflow Automation"
+              style={{ width: '100%', height: '80vh', border: 'none', background: 'white' }}
+              allow="clipboard-write; clipboard-read;"
+            />
           )}
           {page === 'service-task-manager' && (
             <ServiceTaskManager 
