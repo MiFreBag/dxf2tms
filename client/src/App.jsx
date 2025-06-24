@@ -900,6 +900,21 @@ function App() {
         </main>
       </div>
 
+      {/* TMS Dialog */}
+      {showTmsDialog && (
+        <TmsPreviewDialog
+          file={tmsParams.file}
+          srs={tmsParams.srs}
+          bounds={tmsParams.bounds}
+          maxzoom={tmsParams.maxzoom}
+          onClose={() => setShowTmsDialog(false)}
+          onCreate={handleCreateTms}
+          api={API}
+          token={token}
+          addMessage={addMessage}
+        />
+      )}
+
       {/* TMS Preview Dialog */}
       {showTmsPreviewDialog && (
         <TmsPreviewDialog 
