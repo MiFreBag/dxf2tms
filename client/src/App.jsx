@@ -698,9 +698,23 @@ function App() {
                                     <div className="text-sm font-medium text-gray-900">
                                       {file.name}
                                     </div>
-                                    <div className="text-sm text-gray-500">
-                                      {new Date(file.uploadedAt).toLocaleString('de-DE')}
-                                    </div>
+                                    {/* GeoPDF-Metadaten anzeigen, falls vorhanden */}
+                                    {file.bbox && Array.isArray(file.bbox) && file.bbox.length === 4 && file.srs && (
+                                      <div className="text-xs text-blue-700 mt-1 bg-blue-50 rounded px-2 py-1">
+                                        <b>BBox:</b> [{file.bbox.map(x => typeof x === 'number' ? x.toFixed(2) : x).join(', ')}]<br/>
+                                        <b>SRS:</b> {file.srs}
+                                      </div>
+                                    )}
+                                    {file.bbox && (!file.srs) && (
+                                      <div className="text-xs text-yellow-700 mt-1 bg-yellow-50 rounded px-2 py-1">
+                                        <b>BBox:</b> [{file.bbox.map(x => typeof x === 'number' ? x.toFixed(2) : x).join(', ')}] <span className="ml-2">(kein SRS erkannt)</span>
+                                      </div>
+                                    )}
+                                    {file.srs && (!file.bbox) && (
+                                      <div className="text-xs text-yellow-700 mt-1 bg-yellow-50 rounded px-2 py-1">
+                                        <b>SRS:</b> {file.srs} <span className="ml-2">(keine Bounding Box erkannt)</span>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </td>
