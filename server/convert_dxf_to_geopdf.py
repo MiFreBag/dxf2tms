@@ -88,23 +88,28 @@ class DXFToGeoPDFConverter:
         try:
             if not os.path.exists(dxf_path):
                 raise FileNotFoundError(f"DXF file not found: {dxf_path}")
-            
-            # DXF-Layer laden
             layer = QgsVectorLayer(dxf_path, layer_name, "ogr")
-            
             if not layer.isValid():
                 raise Exception(f"Invalid DXF layer: {layer.error().message()}")
-            
             # Layer zum Projekt hinzufügen
             self.project.addMapLayer(layer)
-            
+            # --- NEU: Layer-CRS und Projekt-CRS synchronisieren ---
+            crs = layer.crs()
+            if not crs.isValid() or crs.authid().lower() in ("", "none"):
+                crs = QgsCoordinateReferenceSystem("EPSG:3857")
+                if crs.isValid():
+                    layer.setCrs(crs)
+                    self.project.setCrs(crs)
+                    logger.warning(f"Kein SRS im DXF gefunden, setze EPSG:3857 für {dxf_path}")
+                else:
+                    logger.warning("Fallback SRS EPSG:3857 ist ungültig!")
+            else:
+                self.project.setCrs(crs)
             logger.info(f"DXF layer loaded successfully: {layer_name}")
             logger.info(f"Layer extent: {layer.extent().toString()}")
             logger.info(f"Layer CRS: {layer.crs().authid()}")
             logger.info(f"Feature count: {layer.featureCount()}")
-            
             return layer
-            
         except Exception as e:
             logger.error(f"Failed to load DXF layer: {e}")
             raise
@@ -179,34 +184,25 @@ class DXFToGeoPDFConverter:
         Print Layout immer als A4 quer (Landscape) erstellen
         """
         try:
-            # Layout erstellen
             layout = QgsPrintLayout(self.project)
             layout.initializeDefaults()
             layout.setName(layout_name)
             self.project.layoutManager().addLayout(layout)
-
-            # Kartenelement erstellen
             map_item = QgsLayoutItemMap(layout)
-
             # Immer A4 quer
             page_width, page_height = 297, 210  # mm (A4 Landscape)
             map_margins = 10
-
-            # Kartenbereich definieren
             map_width = page_width - (2 * map_margins)
             map_height = page_height - (2 * map_margins) - (20 if add_elements else 0)
-
-            # Karte positionieren und dimensionieren
             map_item.attemptMove(QgsLayoutPoint(map_margins, map_margins + (20 if add_elements else 0)))
             map_item.attemptResize(QgsLayoutSize(map_width, map_height, QgsUnitTypes.LayoutMillimeters))
-
+            # --- NEU: CRS explizit auf das Kartenelement setzen ---
+            map_item.setCrs(layer.crs())
             # Layer-Extent auf Karte setzen
             map_item.setExtent(layer.extent())
             layout.addLayoutItem(map_item)
-
             if add_elements:
                 self._add_layout_elements(layout, map_item, layer, page_width)
-
             logger.info(f"Print layout created: {layout_name} (A4 quer)")
             return layout
         except Exception as e:
@@ -287,7 +283,9 @@ class DXFToGeoPDFConverter:
             export_settings.georeference = georeference
             export_settings.rasterizeWholeImage = False
             export_settings.forceVectorOutput = True
-            
+            # --- Optional: Metadaten-Export aktivieren, falls verfügbar ---
+            if hasattr(export_settings, 'exportMetadata'):
+                export_settings.exportMetadata = True
             # PDF exportieren
             result = exporter.exportToPdf(pdf_path, export_settings)
             
