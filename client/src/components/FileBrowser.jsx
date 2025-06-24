@@ -173,7 +173,9 @@ function FileBrowser({ token, onMessage }) {
 
   // Löschen ausführen
   const handleDelete = async () => {
-        if (!deleteConfirm) return
+    if (!deleteConfirm) return
+    let deletedCount = 0;
+    try {
       for (const fullPath of deleteConfirm) {
         let targetId;
         let endpoint;
@@ -208,7 +210,6 @@ function FileBrowser({ token, onMessage }) {
         });
 
         if (!response.ok) {
-
           const errorData = await response.json().catch(() => ({}));
           throw new Error(`Fehler beim Löschen von ${fullPath}: ${errorData.detail || response.statusText}`);
         }
