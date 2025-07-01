@@ -6,6 +6,7 @@ Dieses Verzeichnis enthält alle weiterführenden Informationen zum Projekt **dx
 
 * [Projektübersicht](overview.md) – beschreibt die Komponenten (FastAPI-Server, React-Client, Nginx) und führt durch den Schnellstart.
 * [MapTiler Engine](maptiler.md) – Nutzung eines optionalen Containers zur Kachelgenerierung.
+* [BagMapTiler](bagmaptiler.md) – eigene GDAL-basierte Engine für Tiles.
 * [n8n Automatisierung](n8n.md) – Beispielhafte Einbindung eines n8n-Workflows.
 
 ## Entwicklung

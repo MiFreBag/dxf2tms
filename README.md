@@ -42,5 +42,6 @@ server containers.
 Eine ausführlichere Beschreibung des Projekts befindet sich in [docs/overview.md](docs/overview.md).
 Eine Anleitung zur Nutzung eines MapTiler-Engine-Containers zur alternativen
 Kachelerzeugung findet sich in [docs/maptiler.md](docs/maptiler.md).
+Hinweise zur eigenen GDAL-basierten Engine stehen in [docs/bagmaptiler.md](docs/bagmaptiler.md).
 Eine kurze Einführung zur Automatisierung mit n8n ist unter
 [docs/n8n.md](docs/n8n.md) zu finden.
