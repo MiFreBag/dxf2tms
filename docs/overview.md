@@ -73,3 +73,10 @@ Zur Validierung der TMS-Kachelgenerierung kann optional der proprietäre
 MapTiler-Engine-Container von Kloakan Tech genutzt werden. Hinweise zur
 Einbindung finden sich in [docs/maptiler.md](maptiler.md).
 
+## BagMapTiler
+
+Als vollständig quelloffene Alternative steht das Docker-Image
+`bagmaptiler` bereit. Es verwendet ausschließlich GDAL-Werkzeuge, um aus
+GeoPDF-, DXF- oder TIFF-Dateien XYZ-Kacheln oder MBTiles zu erzeugen.
+Details zur Verwendung befinden sich in [docs/bagmaptiler.md](bagmaptiler.md).
+
