@@ -10,6 +10,7 @@ import {
   MapPin,
   Navigation,
   Layers,
+  Activity,
   Menu,
   X,
   BookOpen
@@ -17,6 +18,7 @@ import {
 import Map from './components/Map.jsx' // Import der Map Komponente
 import ServiceTaskManager from './components/ServiceTaskManager.jsx';
 import ContainerMonitor from './components/ContainerMonitor.jsx';
+import RunnerStatusMonitor from './components/RunnerStatusMonitor.jsx';
 import Login from './components/Login';
 import TmsPreviewDialog from './components/TmsPreviewDialog.jsx';
 import FileBrowser from './components/FileBrowser.jsx';
@@ -467,6 +469,7 @@ function App() {
     { id: 'n8n', label: 'n8n Workflow', icon: Layers },
     { id: 'service-task-manager', label: 'Service Task Manager', icon: Layers },
     { id: 'container-monitor', label: 'Container Monitor', icon: Layers },
+    { id: 'runner-status-monitor', label: 'Runner Status Monitor', icon: Activity },
     { id: 'api-docs', label: 'API Docs', icon: BookOpen },
   ]
 
@@ -887,14 +890,21 @@ function App() {
             />
           )}
           {page === 'container-monitor' && (
-            <ContainerMonitor 
-              api={API} 
-              token={token} 
-              addMessage={addMessage} 
-              dockerContainers={dockerContainers} 
-              dockerImages={dockerImages} 
-              dockerVolumes={dockerVolumes} 
-              fetchDockerServices={fetchDockerServices} 
+            <ContainerMonitor
+              api={API}
+              token={token}
+              addMessage={addMessage}
+              dockerContainers={dockerContainers}
+              dockerImages={dockerImages}
+              dockerVolumes={dockerVolumes}
+              fetchDockerServices={fetchDockerServices}
+            />
+          )}
+          {page === 'runner-status-monitor' && (
+            <RunnerStatusMonitor
+              api={API}
+              token={token}
+              addMessage={addMessage}
             />
           )}
         </main>
